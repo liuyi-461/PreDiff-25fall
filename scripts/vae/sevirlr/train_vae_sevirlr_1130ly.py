@@ -851,14 +851,17 @@ class VAESEVIRPLModule(pl.LightningModule):
 # ============1127liuyi写死命令行超参数=====================
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='tmp_vae_sevirl_1130_974ckpt_e100', type=str)
-    parser.add_argument('--gpus', default=1, type=int)
-    parser.add_argument('--cfg', default='/home/user01/personal_file/lgj/PreDiff-25fall/scripts/vae/sevirlr/cfg.yaml', type=str)
+    parser.add_argument('--save', default='train_vae_sevirl_1201_le9e400', type=str)
+    parser.add_argument('--gpus', default=2, type=int)
+    parser.add_argument('--cfg', default='/home/user01/personal_file/lgj/PreDiff-25fall/scripts/vae/sevirlr/cfg_v1.yaml', type=str)
     parser.add_argument('--test', default=False, action='store_true')
-    parser.add_argument('--ckpt_name', default="/home/user01/personal_file/lgj/PreDiff-25fall/experiments-1121-train/tmp_vae_sevirl_1130/checkpoints/974.ckpt", type=str,
+    parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
     parser.add_argument('--pretrained', default=False,action='store_true',
                         help='Load pretrained checkpoints for test.')
+    
+    parser.add_argument("--finetune", default=True, action="store_true",
+            help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
     return parser
 
 
@@ -916,7 +919,8 @@ def main():
     #     num_samples=num_train_samples,
     #     total_batch_size=total_batch_size,
     # )
-    data_dir = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
+    #data_dir = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
+    data_dir = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_mask64"
     num_files = None  # 可改为任意数量或 None 表示全部
     dm = NPYDataModule(
         data_dir=data_dir,
@@ -960,6 +964,22 @@ def main():
                      datamodule=dm,
                      ckpt_path=ckpt_path)
     else:
+        # ====== 新增 fine-tune 初始化 ======
+        if args.finetune:
+            print("[INFO] Fine-tuning: loading pretrained Earthformer-UNet weights as initialization...")
+            vae_ckpt_path = '/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/vae/pretrained_sevirlr_vae_8x8x64_v1.pt'
+            if not os.path.exists(vae_ckpt_path):
+                raise FileNotFoundError(f"Pretrained checkpoint not found: {vae_ckpt_path}")
+            pretrained_state = torch.load(vae_ckpt_path, map_location=torch.device("cpu"))
+
+            # 加载时允许不完全匹配
+            missing_keys, unexpected_keys = pl_module.torch_nn_module.load_state_dict(
+                pretrained_state, strict=False)
+            print(f"[Fine-tune Init] Missing keys: {missing_keys}")
+            print(f"[Fine-tune Init] Unexpected keys: {unexpected_keys}")
+            print("[Fine-tune Init] Pretrained weights loaded successfully. Continue training...")
+        # ====== end fine-tune ======
+        
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
             if not os.path.exists(ckpt_path):

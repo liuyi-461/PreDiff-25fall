@@ -16,8 +16,7 @@ dataset:
   val_ratio: 0.1
   metrics_mode: "0"
   metrics_list: ['csi', 'pod', 'sucr', 'bias']
-  # threshold_list: [16, 74, 133, 160, 181, 219]
-  threshold_list: [11,  42.5, 52, 94, 113, 128, 155]
+  threshold_list: [16, 74, 133, 160, 181, 219]
   aug_mode: "1"
 layout:
   layout: "NHWC"

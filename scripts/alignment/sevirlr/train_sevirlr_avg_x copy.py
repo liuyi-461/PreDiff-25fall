@@ -1,7 +1,4 @@
 import warnings
-from torch.utils.data import Dataset, DataLoader
-import glob
-
 from typing import Sequence, Union, Dict
 from shutil import copyfile
 import inspect
@@ -43,44 +40,6 @@ from prediff.diffusion.knowledge_alignment.sevir import SEVIRAvgIntensityAlignme
 
 pytorch_state_dict_name = "sevirlr_alignment_avgx.pt"
 
-class NPYDataset(Dataset):
-    """
-    自定义数据集：从指定目录读取单个或多个 .npy 文件。
-    每个 .npy 文件形状为 (128, 128, 25) —— 即 (H, W, T)
-    """
-
-    def __init__(self, data_dir, limit=None, normalize=True):
-        """
-        Args:
-            data_dir (str): 包含 .npy 文件的目录
-            limit (int or None): 读取的文件数量，None 表示读取全部
-            normalize (bool): 是否归一化到 [0, 1]
-        """
-        self.files = sorted(glob.glob(os.path.join(data_dir, "*.npy")))
-        if limit is not None:
-            self.files = self.files[:limit]
-
-        if len(self.files) == 0:
-            raise FileNotFoundError(f"未在 {data_dir} 中找到 .npy 文件")
-
-        self.normalize = normalize
-
-    def __len__(self):
-        return len(self.files)
-
-    def __getitem__(self, idx):
-        arr = np.load(self.files[idx])  # shape: (128, 128, 25)
-        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
-        arr = np.expand_dims(arr, axis=-1)  # -> (128, 128, 25, 1)
-
-        if self.normalize:
-            # arr = arr / np.max(arr) if np.max(arr) > 0 else arr
-            arr = arr / 180.0  # 归一化到 [0, 1]
-
-        # 转换为 torch.Tensor 并调整维度为 (T, H, W, C)
-        arr = np.transpose(arr, (2, 0, 1, 3))  # (25, 128, 128, 1)
-        arr = torch.tensor(arr, dtype=torch.float32)
-        return arr
 
 class SEVIRAlignmentPLModule(AlignmentPL):
 
@@ -114,7 +73,6 @@ class SEVIRAlignmentPLModule(AlignmentPL):
             norm_num_groups=vae_cfg["norm_num_groups"],
             layers_per_block=vae_cfg["layers_per_block"],
             out_channels=vae_cfg["out_channels"], )
-             
         pretrained_ckpt_path = vae_cfg["pretrained_ckpt_path"]
         if pretrained_ckpt_path is not None:
             state_dict = torch.load(os.path.join(default_pretrained_vae_dir, vae_cfg["pretrained_ckpt_path"]),
@@ -236,7 +194,7 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.align.model_args.use_inter_ffn = True
         cfg.align.model_args.hierarchical_pos_embed = False
         cfg.align.model_args.pos_embed_type = 't+h+w'
-        cfg.align.model_args.padding_type = "zeros"
+        cfg.align.model_args.padding_type = "zero"
         cfg.align.model_args.checkpoint_level = 0
         cfg.align.model_args.use_relative_pos = True
         cfg.align.model_args.self_attn_use_final_proj = True
@@ -293,15 +251,13 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.stride = cfg.out_len
         cfg.layout = "NTHWC"
         cfg.start_date = None
-        #cfg.train_val_split_date = (2019, 1, 1)
-        #cfg.train_test_split_date = (2019, 6, 1)
-        cfg.train_val_split_date = (2018, 9, 6)
-        cfg.train_test_split_date = (2018, 12, 3)
+        cfg.train_val_split_date = (2019, 1, 1)
+        cfg.train_test_split_date = (2019, 6, 1)
         cfg.end_date = None
         cfg.metrics_mode = "0"
         cfg.metrics_list = ('csi', 'pod', 'sucr', 'bias')
         # cfg.threshold_list = (16, 74, 133, 160, 181, 219)
-        cfg.threshold_list = (11,  42.5, 52, 94, 113, 128, 155)
+        cfg.threshold_list = (11, 52, 94, 113, 128, 155)
         cfg.aug_mode = "1"
         return cfg
 
@@ -618,36 +574,18 @@ def main():
         float32_matmul_precision = "high"
     torch.set_float32_matmul_precision(float32_matmul_precision)
     seed_everything(seed, workers=True)
-    # dm = SEVIRAlignmentPLModule.get_sevir_datamodule(
-    #     dataset_cfg=dataset_cfg,
-    #     micro_batch_size=micro_batch_size,
-    #     num_workers=8, )
-    # dm.prepare_data()
-    # dm.setup()
-    # accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
-    # total_num_steps = SEVIRAlignmentPLModule.get_total_num_steps(
-    #     epoch=max_epochs,
-    #     num_samples=dm.num_train_samples,
-    #     total_batch_size=total_batch_size,
-    # )
-    
-    # data_dir = "/home/user01/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy"
-    data_dir = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
-    num_files = None  # 可改为任意数量或 None 表示全部
-
-    dataset = NPYDataset(data_dir=data_dir, limit=num_files)
-    train_loader = DataLoader(dataset, batch_size=micro_batch_size, shuffle=True, num_workers=8,pin_memory=True)
-   
+    dm = SEVIRAlignmentPLModule.get_sevir_datamodule(
+        dataset_cfg=dataset_cfg,
+        micro_batch_size=micro_batch_size,
+        num_workers=8, )
+    dm.prepare_data()
+    dm.setup()
     accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
-    # 训练集样本数量
-    num_train_samples = len(train_loader.dataset) *13
-    # 总训练步数
     total_num_steps = SEVIRAlignmentPLModule.get_total_num_steps(
         epoch=max_epochs,
-        num_samples=num_train_samples,
+        num_samples=dm.num_train_samples,
         total_batch_size=total_batch_size,
     )
-    
     pl_module = SEVIRAlignmentPLModule(
         total_num_steps=total_num_steps,
         save_dir=args.save,
@@ -664,7 +602,7 @@ def main():
         else:
             ckpt_path = None
         trainer.test(model=pl_module,
-                     dataloaders=train_loader,
+                     datamodule=dm,
                      ckpt_path=ckpt_path)
     else:
         if args.ckpt_name is not None:
@@ -675,7 +613,7 @@ def main():
         else:
             ckpt_path = None
         trainer.fit(model=pl_module,
-                    train_dataloaders=train_loader,
+                    datamodule=dm,
                     ckpt_path=ckpt_path)
         # save state_dict of the latent diffusion model, i.e., EarthformerDiffusion
         pl_ckpt = pl_load(path_or_url=trainer.checkpoint_callback.best_model_path,
@@ -693,7 +631,7 @@ def main():
         torch.save(state_dict, os.path.join(pl_module.save_dir, "checkpoints", pytorch_state_dict_name))
         # test
         trainer.test(ckpt_path="best",
-                     dataloaders=train_loader)
+                     datamodule=dm)
 
 
 if __name__ == "__main__":

@@ -125,7 +125,8 @@ def vis_sevir_seq(
     nrows = len(seq_list_wrap)
     fig, ax = plt.subplots(nrows=nrows,
                            ncols=max_len,
-                           figsize=(3 * max_len, 3 * nrows))
+                           figsize=(3 * max_len, 3 * nrows),
+                           squeeze=False)
 
     for i, (seq, label, seq_len) in enumerate(zip(seq_list_wrap, label_list_wrap, seq_len_list_wrap)):
         ax[i][0].set_ylabel(ylabel=label, fontproperties=fontproperties, rotation=label_rotation)

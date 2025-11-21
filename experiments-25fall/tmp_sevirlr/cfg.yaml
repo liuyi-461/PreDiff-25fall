@@ -1,43 +1,46 @@
 dataset:
-  dataset_name: "sevirlr"
+  dataset_name: "sevirlr" #数据集名称
   img_height: 128
-  img_width: 128
-  in_len: 7
-  out_len: 6
-  seq_len: 13
-  plot_stride: 1
-  interval_real_time: 10
-  sample_mode: "sequent"
-  stride: 6
-  layout: "NTHWC"
-  start_date: null
+  img_width: 128 #图像的高度和宽度，这里是128x128。
+  in_len: 7 #输入序列的长度，即历史帧数，为7
+  out_len: 6 #输出序列的长度，即预测帧数，为6。
+  seq_len: 13 #总序列长度，为13（7+6）
+  plot_stride: 1 #绘制图像时的步长，为1
+  interval_real_time: 10 #相邻帧之间的真实时间间隔（分钟），为10分钟。
+  sample_mode: "sequent" #采样模式，这里是"sequent"，表示连续采样。
+  stride: 6 #采样时的步长，为6。
+  layout: "NTHWC" #数据布局，这里是"NTHWC"，即（批次，时间，高度，宽度，通道）。
+  start_date: null 
   train_test_split_date: [2019, 6, 1]
-  end_date: null
-  val_ratio: 0.1
-  metrics_mode: "0"
-  metrics_list: ['csi', 'pod', 'sucr', 'bias']
-  # threshold_list: [16, 74, 133, 160, 181, 219]
-  threshold_list: [11, 42.5, 52, 94, 113, 128, 155]
-  aug_mode: "2"
-layout:
+  end_date: null #数据集的起始日期、训练测试分割日期和结束日期。
+  val_ratio: 0.1 #验证集比例，从训练集中划分10%作为验证集。
+  metrics_mode: "0" #评估模式，这里为"0"。
+  metrics_list: ['csi', 'pod', 'sucr', 'bias'] #评估指标列表，包括csi、pod、sucr、bias。
+  threshold_list: [16, 30, 74, 133, 160, 181, 219] #评估时使用的阈值列表，用于计算上述指标。
+  aug_mode: "2" #数据增强模式，这里为"2"。
+  npy_dir: "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"  # 你的NPY文件路径
+  npy_num_samples: null  # 限制样本数（null=全部，可填具体数字如1000）
+  random_split: false  # 是否打乱后划分数据集
+  split_seed: 42  # 打乱的随机种子
+layout: #布局配置 (layout)定义了输入输出序列的长度、图像尺寸和通道数，以及数据布局。
   in_len: 7
   out_len: 6
   img_height: 128
   img_width: 128
   data_channels: 1
   layout: "NTHWC"
-optim:
-  total_batch_size: 64
-  micro_batch_size: 2
-  seed: 0
-  float32_matmul_precision: "high"
-  method: "adamw"
-  lr: 1.0e-3
-  wd: 1.0e-5
-  betas: [0.9, 0.999]
-  gradient_clip_val: 1.0
-  max_epochs: 2000
-  loss_type: "l2"
+optim: #优化配置 (optim)
+  total_batch_size: 64 #总批次大小，为64。
+  micro_batch_size: 2 #每个GPU上的批次大小，为2。
+  seed: 0 #随机种子，为0。
+  float32_matmul_precision: "high" #浮点数矩阵乘法的精度，设为"high"
+  method: "adamw" #优化器方法，使用AdamW。
+  lr: 1.0e-3 #学习率，1e-3
+  wd: 1.0e-5 #权重衰减，1e-5
+  betas: [0.9, 0.999] #AdamW的beta参数。
+  gradient_clip_val: 1.0 #梯度裁剪值，1.0。
+  max_epochs: 2000 #最大训练轮数，2000。
+  loss_type: "l2" #损失类型，这里为L2损失。
   # scheduler
   warmup_percentage: 0.1
   lr_scheduler_mode: "cosine"
@@ -50,37 +53,37 @@ optim:
   early_stop_mode: "min"
   early_stop_patience: 100
   save_top_k: 3
-logging:
-  logging_prefix: "PreDiff"
-  monitor_lr: true
-  monitor_device: false
-  track_grad_norm: -1
-  use_wandb: false
-  profiler: null
-  save_npy: true
-trainer:
-  check_val_every_n_epoch: 50
-  log_step_ratio: 0.001
-  precision: 32
-  find_unused_parameters: false
-  num_sanity_val_steps: 2
-eval:
-  train_example_data_idx_list: [0, ]
-  val_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128]
-  test_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128]
-  eval_example_only: true
-  eval_aligned: true
-  eval_unaligned: true
-  num_samples_per_context: 1
-  fs: 20
-  label_offset: [-0.5, 0.5]
-  label_avg_int: false
-  fvd_features: 400
-model:
-  diffusion:
-    data_shape: [6, 128, 128, 1]
-    beta_schedule: "linear"
-    use_ema: true
+logging: #日志配置 (logging)
+  logging_prefix: "PreDiff" #日志前缀。
+  monitor_lr: true #是否监控学习率。
+  monitor_device: false #是否监控设备状态。
+  track_grad_norm: -1 #是否跟踪梯度范数，-1表示不跟踪。
+  use_wandb: false #是否使用Weights & Biases进行日志记录。
+  profiler: null #分析器，这里为null，表示不使用。
+  save_npy: true #是否保存npy文件。
+trainer: #训练器配置 (trainer)
+  check_val_every_n_epoch: 1 #每50个epoch验证一次。
+  log_step_ratio: 0.001 #日志记录步数比例，0.001表示每个epoch记录0.1%的步数。
+  precision: 32 # 训练精度，32位。
+  find_unused_parameters: false #是否查找未使用的参数，这里设为false。
+  num_sanity_val_steps: 2 #在训练开始前运行2个验证步骤以检查代码。
+eval: #评估配置 (eval)
+  train_example_data_idx_list: [0, ] #定义了训练、验证、测试中用于示例可视化的数据索引。
+  val_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128] 
+  test_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128] 
+  eval_example_only: true #是否仅评估示例数据，这里为true，表示只评估示例数据索引指定的数据。
+  eval_aligned: true #是否评估对齐和未对齐的样本。
+  eval_unaligned: true #是否评估对齐和未对齐的样本。
+  num_samples_per_context: 1 #每个上下文生成的样本数。
+  fs: 20 #字体大小，用于可视化。
+  label_offset: [-0.5, 0.5] #标签偏移，用于可视化。
+  label_avg_int: false #是否在标签中显示平均强度。
+  fvd_features: 400 # FVD评估使用的特征数。
+model: #模型配置 (model)
+  diffusion: #扩散模型 (diffusion)
+    data_shape: [6, 128, 128, 1] #数据形状，[6,128,128,1]对应[时间,高度,宽度,通道]。
+    beta_schedule: "linear" #噪声调度方式，线性。
+    use_ema: true #是否使用指数移动平均。
     log_every_t: 100
     clip_denoised: false
     linear_start: 1e-4
@@ -104,7 +107,7 @@ model:
     latent_cond_shape: [7, 16, 16, 64]
   align:
     # alignment_type: null
-    alignment_type: "avg_x"
+    alignment_type: null
     guide_scale: 50.0
     model_type: "cuboid"
     model_args:
@@ -153,7 +156,7 @@ model:
       pool: "attention"
       readout_seq: true
       out_len: 6
-    model_ckpt_path: "pretrained_sevirlr_alignment_avg_x_cuboid_v1.pt"
+    model_ckpt_path: "pretrained_sevirlr_alignment_avg_x_cuboid_v1.pt" #对齐模型的预训练权重路径。
   latent_model:
     input_shape: [7, 16, 16, 64]
     target_shape: [6, 16, 16, 64]

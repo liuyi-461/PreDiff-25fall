@@ -67,3 +67,11 @@ pretrained/
 
 # Data
 datasets/
+nohup.out
+wheelhouse/
+experiments-25fall/tmp_*/
+lightning_logs/
+nohup.out
+wheelhouse/
+experiments-25fall/tmp_*/
+lightning_logs/

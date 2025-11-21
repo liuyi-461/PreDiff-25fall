@@ -1,4 +1,10 @@
 import warnings
+import glob
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader, random_split
+import lightning.pytorch as pl
+from torchmetrics.image import StructuralSimilarityIndexMeasure
+
 from typing import Sequence, Union, Dict
 from shutil import copyfile
 import inspect
@@ -44,6 +50,134 @@ from prediff.diffusion.knowledge_alignment.sevir import SEVIRAvgIntensityAlignme
 
 pytorch_state_dict_name = "sevirlr_earthformerunet.pt"
 
+# --------------------------
+# Dataset
+# --------------------------
+class NPYDataset(Dataset):
+    def __init__(self, data_dir, limit=None, normalize=True):
+        
+        self.files = sorted(glob.glob(os.path.join(data_dir, "*.npy")))
+        if limit is not None:
+            self.files = self.files[:limit]
+
+        if len(self.files) == 0:
+            raise FileNotFoundError(f"未在 {data_dir} 中找到 .npy 文件")
+
+        self.normalize = normalize
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        file_path = self.files[idx]
+        arr = np.load(file_path)  # (128,128,13) or (128,128,25)
+        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # add channel dim
+        arr = np.expand_dims(arr, axis=-1)   # (H,W,T,1)
+
+        if self.normalize:
+            arr = arr / 255.0
+
+        # -> (T,H,W,1)
+        arr = np.transpose(arr, (2, 0, 1, 3))
+        arr = torch.tensor(arr, dtype=torch.float32)
+
+        return arr
+
+
+# --------------------------
+# Lightning DataModule
+# --------------------------
+class NPYDataModule(pl.LightningDataModule):
+
+    def __init__(
+            self,
+            data_dir,
+            batch_size=4,
+            num_workers=8,
+            limit=None,
+            val_ratio=0.1,
+            test_ratio=0.1,
+            normalize=True,
+    ):
+        super().__init__()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.limit = limit
+        self.val_ratio = val_ratio
+        self.test_ratio = test_ratio
+        self.normalize = normalize
+
+        self.dataset = None
+        self.train_set = None
+        self.val_set = None
+        self.test_set = None
+
+    def setup(self, stage=None):
+        # Load entire dataset
+        self.dataset = NPYDataset(
+            data_dir=self.data_dir,
+            limit=self.limit,
+            normalize=self.normalize
+        )
+        total = len(self.dataset)
+
+        # Split sizes
+        val_size = int(total * self.val_ratio)
+        test_size = int(total * self.test_ratio)
+        train_size = total - val_size - test_size
+
+        self.train_set, self.val_set, self.test_set = random_split(
+            self.dataset, [train_size, val_size, test_size]
+        )
+
+        print(f"Total samples: {total}")
+        print(f"Train: {len(self.train_set)}, Val: {len(self.val_set)}, Test: {len(self.test_set)}")
+
+    def train_dataloader(self):
+        return DataLoader(
+            self.train_set,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self.val_set,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            self.test_set,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=True,
+            persistent_workers=True,
+        )
+        
+    @property
+    def num_train_samples(self):
+        return len(self.train_set)
+
+    @property
+    def num_val_samples(self):
+        return len(self.val_set)
+
+    @property
+    def num_test_samples(self):
+        return len(self.test_set)
+    
 
 def get_alignment_kwargs_avg_x(context_seq=None, target_seq=None, ):
     r"""
@@ -269,6 +403,18 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                 auto_t=True, )
 
         self.configure_save(cfg_file_path=oc_file)
+
+    # 创建圆形掩码
+    def _create_circle_mask(self, center=None):
+        # 创建圆形掩码：圆内为True，圆外为False
+        h = 128   # 128
+        w = 128    # 128
+        radius = 64
+        cy, cx = h // 2, w // 2
+        y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing='ij')
+        # 计算每个像素点到圆心的距离并判断是否在圆内    
+        mask = ((y - cy) ** 2 + (x - cx) ** 2) <= radius ** 2
+        return mask
 
     def configure_save(self, cfg_file_path=None):
         self.save_dir = os.path.join(default_exps_dir, self.save_dir)
@@ -823,6 +969,13 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
         if not self.eval_example_only or data_idx in self.val_example_data_idx_list:
             target_seq, cond, context_seq = \
                 self.get_input(batch, return_verbose=True)
+                
+             # ✅ 创建圆形掩码（动态获取空间维度）
+            _, _, h, w, _ = target_seq.shape
+            mask_spatial = self._create_circle_mask().to(target_seq.device)
+            mask_bt = mask_spatial.unsqueeze(0).unsqueeze(0).unsqueeze(-1)  # (1, 1, H, W, 1)
+            mask_value = torch.tensor(255.0, device=target_seq.device)
+                    
             aligned_pred_seq_list = []
             aligned_pred_label_list = []
             pred_seq_list = []
@@ -846,9 +999,17 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     aligned_pred_label_list.append(f"{self.oc.logging.logging_prefix}_aligned_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.valid_aligned_mse(pred_seq, target_seq)
-                    self.valid_aligned_mae(pred_seq, target_seq)
-                    self.valid_aligned_score.update(pred_seq, target_seq)
+                    # self.valid_aligned_mse(pred_seq, target_seq)
+                    # self.valid_aligned_mae(pred_seq, target_seq)
+                    # self.valid_aligned_score.update(pred_seq, target_seq)
+                    # ✅ 应用掩码：圆外设为255，仅在圆形区域内计算指标
+                    masked_pred_seq = torch.where(mask_bt, pred_seq, mask_value)
+                    masked_target_seq = torch.where(mask_bt, target_seq, mask_value)           
+                    self.valid_aligned_mse(masked_pred_seq, masked_target_seq)
+                    self.valid_aligned_mae(masked_pred_seq, masked_target_seq)
+                    self.valid_aligned_score.update(masked_pred_seq, masked_target_seq)
+                        
+                    
                 # no alignment
                 if self.oc.eval.eval_unaligned:
                     pred_seq = self.sample(
@@ -860,9 +1021,16 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     pred_label_list.append(f"{self.oc.logging.logging_prefix}_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.valid_mse(pred_seq, target_seq)
-                    self.valid_mae(pred_seq, target_seq)
-                    self.valid_score.update(pred_seq, target_seq)
+                    # self.valid_mse(pred_seq, target_seq)
+                    # self.valid_mae(pred_seq, target_seq)
+                    # self.valid_score.update(pred_seq, target_seq)
+                    # ✅ 应用掩码
+                    masked_pred_seq = torch.where(mask_bt, pred_seq, mask_value)
+                    masked_target_seq = torch.where(mask_bt, target_seq, mask_value)           
+                    self.valid_mse(masked_pred_seq, masked_target_seq)
+                    self.valid_mae(masked_pred_seq, masked_target_seq)
+                    self.valid_score.update(masked_pred_seq, masked_target_seq)
+                        
             pred_seq_list = aligned_pred_seq_list + pred_seq_list
             pred_label_list = aligned_pred_label_list + pred_label_list
             self.save_vis_step_end(
@@ -884,6 +1052,7 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             self.log('valid_loss_epoch', valid_loss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
             self.log('valid_mse_epoch', valid_mse, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
             self.log('valid_mae_epoch', valid_mae, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
+            
             self.log_score_epoch_end(score_dict=valid_score, prefix="valid")
             self.valid_mse.reset()
             self.valid_mae.reset()
@@ -910,6 +1079,17 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             target_seq, cond, context_seq = \
                 self.get_input(batch, return_verbose=True)
             target_seq_bchw = rearrange(target_seq, "b t h w c -> (b t) c h w")
+            
+            # ✅ 创建圆形掩码（根据实际空间维度动态生成）
+            _, _, h, w, _ = target_seq.shape
+            mask_spatial = self._create_circle_mask().to(target_seq.device)
+            # 适配 (B, T, H, W, C) 格式: (1, 1, H, W, 1)
+            mask_bt = mask_spatial.unsqueeze(0).unsqueeze(0).unsqueeze(-1)
+            # 适配 (B*T, C, H, W) 格式: (1, 1, H, W)
+            mask_bchw = mask_spatial.unsqueeze(0).unsqueeze(0)
+            # 掩码外填充值（假设数据范围 0-255）
+            mask_value = torch.tensor(255.0, device=target_seq.device)
+                
             aligned_pred_seq_list = []
             aligned_pred_label_list = []
             pred_seq_list = []
@@ -937,12 +1117,26 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     aligned_pred_label_list.append(f"{self.oc.logging.logging_prefix}_aligned_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.test_aligned_mse(pred_seq, target_seq)
-                    self.test_aligned_mae(pred_seq, target_seq)
-                    self.test_aligned_score.update(pred_seq, target_seq)
-                    self.test_aligned_fvd.update(pred_seq, real=False)
+                    # self.test_aligned_mse(pred_seq, target_seq)
+                    # self.test_aligned_mae(pred_seq, target_seq)
+                    # self.test_aligned_score.update(pred_seq, target_seq)
+                    # self.test_aligned_fvd.update(pred_seq, real=False)
+                    # ✅ 应用掩码：圆外设为255
+                    masked_pred_seq = torch.where(mask_bt, pred_seq, mask_value)
+                    masked_target_seq = torch.where(mask_bt, target_seq, mask_value)
+                
+                    # ✅ 计算掩码后的指标
+                    self.test_aligned_mse(masked_pred_seq, masked_target_seq)
+                    self.test_aligned_mae(masked_pred_seq, masked_target_seq)
+                    self.test_aligned_score.update(masked_pred_seq, masked_target_seq)
+                    self.test_aligned_fvd.update(masked_pred_seq, real=False)
+                    
                     pred_seq_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
-                    self.test_aligned_ssim(pred_seq_bchw, target_seq_bchw)
+                    # self.test_aligned_ssim(pred_seq_bchw, target_seq_bchw)
+                    masked_pred_seq_bchw = torch.where(mask_bchw, pred_seq_bchw, mask_value)
+                    masked_target_seq_bchw = torch.where(mask_bchw, target_seq_bchw, mask_value)
+                    self.test_aligned_ssim(masked_pred_seq_bchw, masked_target_seq_bchw)
+                        
                 # no alignment
                 if self.oc.eval.eval_unaligned:
                     pred_seq = self.sample(
@@ -958,16 +1152,37 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     pred_label_list.append(f"{self.oc.logging.logging_prefix}_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.test_mse(pred_seq, target_seq)
-                    self.test_mae(pred_seq, target_seq)
-                    self.test_score.update(pred_seq, target_seq)
-                    self.test_fvd.update(pred_seq, real=False)
+                    # self.test_mse(pred_seq, target_seq)
+                    # self.test_mae(pred_seq, target_seq)
+                    # self.test_score.update(pred_seq, target_seq)
+                    # self.test_fvd.update(pred_seq, real=False)
+                    # ✅ 应用掩码
+                    masked_pred_seq = torch.where(mask_bt, pred_seq, mask_value)
+                    masked_target_seq = torch.where(mask_bt, target_seq, mask_value)
+                    
+                    # ✅ 计算掩码后指标
+                    self.test_mse(masked_pred_seq, masked_target_seq)
+                    self.test_mae(masked_pred_seq, masked_target_seq)
+                    self.test_score.update(masked_pred_seq, masked_target_seq)
+                    self.test_fvd.update(masked_pred_seq, real=False)
+                    
                     pred_seq_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
-                    self.test_ssim(pred_seq_bchw, target_seq_bchw)
+                    #✅ self.test_ssim(pred_seq_bchw, target_seq_bchw)
+                    masked_pred_seq_bchw = torch.where(mask_bchw, pred_seq_bchw, mask_value)
+                    masked_target_seq_bchw = torch.where(mask_bchw, target_seq_bchw, mask_value)
+                    self.test_ssim(masked_pred_seq_bchw, masked_target_seq_bchw)
+                                   
+            # if self.use_alignment and self.oc.eval.eval_aligned:
+            #     self.test_aligned_fvd.update(target_seq, real=True)       
+            # if self.oc.eval.eval_unaligned:
+            #     self.test_fvd.update(target_seq, real=True)
+            # ✅ FVD 真实数据也需要掩码
+            masked_target_for_fvd = torch.where(mask_bt, target_seq, mask_value)     
             if self.use_alignment and self.oc.eval.eval_aligned:
-                self.test_aligned_fvd.update(target_seq, real=True)
+                self.test_aligned_fvd.update(masked_target_for_fvd, real=True)
             if self.oc.eval.eval_unaligned:
-                self.test_fvd.update(target_seq, real=True)
+                self.test_fvd.update(masked_target_for_fvd, real=True)
+                        
             pred_seq_list = aligned_pred_seq_list + pred_seq_list
             pred_label_list = aligned_pred_label_list + pred_label_list
             self.save_vis_step_end(
@@ -1097,17 +1312,20 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='tmp_sevirlr', type=str)
+    parser.add_argument('--save', default='tmp_sevirlr_prediff_1201', type=str)
     parser.add_argument('--nodes', default=1, type=int,
                         help="Number of nodes in DDP training.")
-    parser.add_argument('--gpus', default=1, type=int,
+    parser.add_argument('--gpus', default=2, type=int,
                         help="Number of GPUS per node in DDP training.")
-    parser.add_argument('--cfg', default=None, type=str)
-    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--cfg', default='/home/user01/personal_file/lgj/PreDiff-25fall/scripts/prediff/sevirlr/cfg.yaml', type=str)
+    parser.add_argument('--test', default=False, action='store_true')
     parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
-    parser.add_argument('--pretrained', action='store_true',
+    parser.add_argument('--pretrained', default=False, action='store_true',
                         help='Load pretrained checkpoints for test.')
+    parser.add_argument("--finetune", default=True, action="store_true",
+                    help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
+
     return parser
 
 
@@ -1143,12 +1361,24 @@ def main():
         float32_matmul_precision = "high"
     torch.set_float32_matmul_precision(float32_matmul_precision)
     seed_everything(seed, workers=True)
-    dm = PreDiffSEVIRPLModule.get_sevir_datamodule(
-        dataset_cfg=dataset_cfg,
-        micro_batch_size=micro_batch_size,
-        num_workers=8, )
+    # dm = PreDiffSEVIRPLModule.get_sevir_datamodule(
+    #     dataset_cfg=dataset_cfg,
+    #     micro_batch_size=micro_batch_size,
+    #     num_workers=8, )
+    # dm.prepare_data()
+    # dm.setup()
+    data_dir = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_mask64"
+    num_files = None  # 可改为任意数量或 None 表示全部
+    dm = NPYDataModule(
+        data_dir=data_dir,
+        batch_size=micro_batch_size,
+        num_workers=8,
+        limit=num_files,   # 可设 None
+    )
+
     dm.prepare_data()
     dm.setup()
+    
     accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
     total_num_steps = PreDiffSEVIRPLModule.get_total_num_steps(
         epoch=max_epochs,
@@ -1190,6 +1420,23 @@ def main():
         trainer.test(model=pl_module,
                      datamodule=dm, )
     else:
+            # ====== 新增 fine-tune 初始化 ======
+        if args.finetune:
+            print("[INFO] Fine-tuning: loading pretrained Earthformer-UNet weights as initialization...")
+            earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,
+                                                    pretrained_sevirlr_earthformerunet_name)
+            if not os.path.exists(earthformerunet_ckpt_path):
+                raise FileNotFoundError(f"Pretrained checkpoint not found: {earthformerunet_ckpt_path}")
+            pretrained_state = torch.load(earthformerunet_ckpt_path, map_location=torch.device("cpu"))
+
+            # 加载时允许不完全匹配
+            missing_keys, unexpected_keys = pl_module.torch_nn_module.load_state_dict(
+                pretrained_state, strict=False)
+            print(f"[Fine-tune Init] Missing keys: {missing_keys}")
+            print(f"[Fine-tune Init] Unexpected keys: {unexpected_keys}")
+            print("[Fine-tune Init] Pretrained weights loaded successfully. Continue training...")
+        # ====== end fine-tune ======
+
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
             if not os.path.exists(ckpt_path):

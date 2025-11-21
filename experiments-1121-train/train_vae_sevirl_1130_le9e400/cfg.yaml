@@ -17,7 +17,7 @@ dataset:
   metrics_mode: "0"
   metrics_list: ['csi', 'pod', 'sucr', 'bias']
   # threshold_list: [16, 74, 133, 160, 181, 219]
-  threshold_list: [11,  42.5, 52, 94, 113, 128, 155]
+  threshold_list: [64,  84, 104, 124, 144, 164, 184]
   aug_mode: "1"
 layout:
   layout: "NHWC"
@@ -27,12 +27,13 @@ optim:
   float32_matmul_precision: "high"
   seed: 0
   method: "adam"
-  lr: 5e-6
+  lr: 5e-9
   betas: [0.5, 0.9]
   gradient_clip_val: 1.0
-  max_epochs: 500
+  max_epochs: 300
   # scheduler
-  warmup_percentage: 0.1
+  #warmup_percentage: 0.1
+  warmup_percentage: 0.01
   lr_scheduler_mode: "cosine"
   min_lr_ratio: 1.0e-3
   warmup_min_lr_ratio: 0.1
@@ -41,7 +42,7 @@ optim:
   early_stop: false
   early_stop_mode: "min"
   early_stop_patience: 5
-  save_top_k: 5
+  save_top_k: 3
 logging:
   logging_prefix: "VAE_GAN_SEVIR-LR"
   monitor_lr: true

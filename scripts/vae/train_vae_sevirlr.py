@@ -1,35 +1,25 @@
 import warnings
-
+from torch.utils.data import Dataset, DataLoader
 import glob
 
 from shutil import copyfile
 import inspect
 from collections import OrderedDict
-import os
-import argparse
-
 import numpy as np
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader, random_split
 from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
-from einops import rearrange
-
+import torchmetrics
 import lightning.pytorch as pl
-from lightning.pytorch import Trainer, seed_everything
-from lightning.pytorch import loggers as pl_loggers
+from lightning.pytorch import Trainer, seed_everything, loggers as pl_loggers
 from lightning.pytorch.strategies import DDPStrategy
 from lightning.pytorch.callbacks import (
     Callback, LearningRateMonitor, DeviceStatsMonitor,
-    EarlyStopping, ModelCheckpoint,
-)
+    EarlyStopping, ModelCheckpoint, )
 from lightning.pytorch.utilities import grad_norm
-
-import torchmetrics
-from torchmetrics.image import StructuralSimilarityIndexMeasure
-
 from omegaconf import OmegaConf
-
+import os
+import argparse
+from einops import rearrange
 
 from prediff.datasets.sevir.sevir_torch_wrap import SEVIRLightningDataModule
 from prediff.datasets.sevir.visualization import vis_sevir_seq
@@ -38,63 +28,27 @@ from prediff.utils.optim import warmup_lambda
 from prediff.utils.pl_checkpoint import pl_load
 from prediff.utils.download import (
     download_pretrained_weights,
-    pretrained_sevirlr_vae_name,
-)
-from prediff.utils.path import (
-    default_pretrained_vae_dir,
-    default_exps_dir,
-)
+    pretrained_sevirlr_vae_name)
+from prediff.utils.path import default_pretrained_vae_dir
+from prediff.utils.path import default_exps_dir
 
 
-pytorch_state_dict_name = "sevirlr_vae_1.pt"
-pytorch_loss_state_dict_name = "sevirlr_vae_loss_1.pt"
+pytorch_state_dict_name = "sevirlr_vae.pt"
+pytorch_loss_state_dict_name = "sevirlr_vae_loss.pt"
 
-# class NPYDataset(Dataset):
-#     """
-#     自定义数据集：从指定目录读取单个或多个 .npy 文件。
-#     每个 .npy 文件形状为 (128, 128, 25) —— 即 (H, W, T)
-#     """
-
-#     def __init__(self, data_dir, limit=None, normalize=True):
-#         """
-#         Args:
-#             data_dir (str): 包含 .npy 文件的目录
-#             limit (int or None): 读取的文件数量，None 表示读取全部
-#             normalize (bool): 是否归一化到 [0, 1]
-#         """
-#         self.files = sorted(glob.glob(os.path.join(data_dir, "*.npy")))
-#         if limit is not None:
-#             self.files = self.files[:limit]
-
-#         if len(self.files) == 0:
-#             raise FileNotFoundError(f"未在 {data_dir} 中找到 .npy 文件")
-
-#         self.normalize = normalize
-
-#     def __len__(self):
-#         return len(self.files)
-
-#     def __getitem__(self, idx):
-#         arr = np.load(self.files[idx])  # shape: (128, 128, 25)
-#         arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
-#         arr = np.expand_dims(arr, axis=-1)  # -> (128, 128, 25, 1)
-
-#         if self.normalize:
-#             # arr = arr / np.max(arr) if np.max(arr) > 0 else arr
-#             arr = arr / 255.0  # 归一化到 [0, 1]
-
-#         # 转换为 torch.Tensor 并调整维度为 (T, H, W, C)
-#         arr = np.transpose(arr, (2, 0, 1, 3))  # (25, 128, 128, 1)
-#         arr = torch.tensor(arr, dtype=torch.float32)
-#         return arr
-
-
-# --------------------------
-# Dataset
-# --------------------------
 class NPYDataset(Dataset):
+    """
+    自定义数据集：从指定目录读取单个或多个 .npy 文件。
+    每个 .npy 文件形状为 (128, 128, 25) —— 即 (H, W, T)
+    """
+
     def __init__(self, data_dir, limit=None, normalize=True):
-        
+        """
+        Args:
+            data_dir (str): 包含 .npy 文件的目录
+            limit (int or None): 读取的文件数量，None 表示读取全部
+            normalize (bool): 是否归一化到 [0, 1]
+        """
         self.files = sorted(glob.glob(os.path.join(data_dir, "*.npy")))
         if limit is not None:
             self.files = self.files[:limit]
@@ -108,116 +62,18 @@ class NPYDataset(Dataset):
         return len(self.files)
 
     def __getitem__(self, idx):
-        file_path = self.files[idx]
-        arr = np.load(file_path)  # (128,128,13) or (128,128,25)
+        arr = np.load(self.files[idx])  # shape: (128, 128, 25)
         arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
-
-        # add channel dim
-        arr = np.expand_dims(arr, axis=-1)   # (H,W,T,1)
+        arr = np.expand_dims(arr, axis=-1)  # -> (128, 128, 25, 1)
 
         if self.normalize:
-            arr = arr / 255.0
+            # arr = arr / np.max(arr) if np.max(arr) > 0 else arr
+            arr = arr / 255.0  # 归一化到 [0, 1]
 
-        # -> (T,H,W,1)
-        arr = np.transpose(arr, (2, 0, 1, 3))
+        # 转换为 torch.Tensor 并调整维度为 (T, H, W, C)
+        arr = np.transpose(arr, (2, 0, 1, 3))  # (25, 128, 128, 1)
         arr = torch.tensor(arr, dtype=torch.float32)
-
         return arr
-
-
-# --------------------------
-# Lightning DataModule
-# --------------------------
-class NPYDataModule(pl.LightningDataModule):
-
-    def __init__(
-            self,
-            data_dir,
-            batch_size=4,
-            num_workers=8,
-            limit=None,
-            val_ratio=0.1,
-            test_ratio=0.1,
-            normalize=True,
-    ):
-        super().__init__()
-        self.data_dir = data_dir
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.limit = limit
-        self.val_ratio = val_ratio
-        self.test_ratio = test_ratio
-        self.normalize = normalize
-
-        self.dataset = None
-        self.train_set = None
-        self.val_set = None
-        self.test_set = None
-
-    def setup(self, stage=None):
-        # Load entire dataset
-        self.dataset = NPYDataset(
-            data_dir=self.data_dir,
-            limit=self.limit,
-            normalize=self.normalize
-        )
-        total = len(self.dataset)
-
-        # Split sizes
-        val_size = int(total * self.val_ratio)
-        test_size = int(total * self.test_ratio)
-        train_size = total - val_size - test_size
-
-        self.train_set, self.val_set, self.test_set = random_split(
-            self.dataset, [train_size, val_size, test_size]
-        )
-
-        print(f"Total samples: {total}")
-        print(f"Train: {len(self.train_set)}, Val: {len(self.val_set)}, Test: {len(self.test_set)}")
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_set,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            persistent_workers=True,
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_set,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            persistent_workers=True,
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self.test_set,
-            batch_size=self.batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=True,
-            persistent_workers=True,
-        )
-        
-    @property
-    def num_train_samples(self):
-        return len(self.train_set)
-
-    @property
-    def num_val_samples(self):
-        return len(self.val_set)
-
-    @property
-    def num_test_samples(self):
-        return len(self.test_set)
-
-
 
 
 class VAESEVIRPLModule(pl.LightningModule):
@@ -290,24 +146,10 @@ class VAESEVIRPLModule(pl.LightningModule):
 
         self.valid_mse = torchmetrics.MeanSquaredError()
         self.valid_mae = torchmetrics.MeanAbsoluteError()
-        self.valid_ssim = torchmetrics.image.StructuralSimilarityIndexMeasure()
         self.test_mse = torchmetrics.MeanSquaredError()
         self.test_mae = torchmetrics.MeanAbsoluteError()
-        self.test_ssim = torchmetrics.image.StructuralSimilarityIndexMeasure()
 
         self.configure_save(cfg_file_path=oc_file)
-        
-    # 创建圆形掩码
-    def _create_circle_mask(self, center=None):
-        # 创建圆形掩码：圆内为True，圆外为False
-        h = 128   # 128
-        w = 128    # 128
-        radius = 64
-        cy, cx = h // 2, w // 2
-        y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing='ij')
-        # 计算每个像素点到圆心的距离并判断是否在圆内    
-        mask = ((y - cy) ** 2 + (x - cx) ** 2) <= radius ** 2
-        return mask
 
     def configure_save(self, cfg_file_path=None):
         self.save_dir = os.path.join(default_exps_dir, self.save_dir)
@@ -383,15 +225,13 @@ class VAESEVIRPLModule(pl.LightningModule):
         cfg.stride = cfg.out_len
         cfg.layout = "NTHWC"
         cfg.start_date = None
-        #cfg.train_val_split_date = (2019, 1, 1)
-        #cfg.train_test_split_date = (2019, 6, 1)
-        cfg.train_val_split_date = (2018, 9, 6)
-        cfg.train_test_split_date = (2018, 12, 3)
+        cfg.train_val_split_date = (2019, 1, 1)
+        cfg.train_test_split_date = (2019, 6, 1)
         cfg.end_date = None
         cfg.metrics_mode = "0"
         cfg.metrics_list = ('csi', 'pod', 'sucr', 'bias')
         # cfg.threshold_list = (16, 74, 133, 160, 181, 219)
-        cfg.threshold_list = (64,  84, 104, 124, 144, 164, 184)
+        cfg.threshold_list = (11, 52, 94, 113, 128, 155)
         cfg.aug_mode = "1"
         return cfg
 
@@ -624,7 +464,7 @@ class VAESEVIRPLModule(pl.LightningModule):
     def get_input(self, batch):
         # target_bchw = rearrange(batch, "b 1 h w c -> b c h w").contiguous()
         x = batch[:, [0,3,6,9]]          # 或任意不越界索引
-        target_bchw = rearrange(x, "b t h w c -> (b t) c h w")   # t=4 合法
+        target_bchw = rearrange(x, "b t h w c -> b (t c) h w")   # t=4 合法
         mask = None
         return target_bchw, mask
 
@@ -639,6 +479,8 @@ class VAESEVIRPLModule(pl.LightningModule):
         g_opt, d_opt = self.optimizers()
         g_sch, d_sch = self.lr_schedulers()
 
+        print("batch shape:", batch.shape)          # 应为 (B,13,128,128,1)
+        print("indices max:", torch.tensor([0,6,12,18]).max())
         target_bchw, _ = self.get_input(batch=batch)
         pred_bchw, posterior = self(target_bchw)
         micro_batch_size = batch.shape[self.batch_axis]
@@ -700,37 +542,17 @@ class VAESEVIRPLModule(pl.LightningModule):
             self.log("val/rec_loss", log_dict_ae["val/rec_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
             self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
             self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-
-            # self.valid_mse(pred_bchw, target_bchw)
-            # self.valid_mae(pred_bchw, target_bchw)
-            # self.valid_ssim(pred_bchw, target_bchw)
-       
-            #只在mask里面计算指标
-            # 假设 pred_bchw 和 target_bchw 的形状都是 (B, C, 128, 128)
-            mask = self._create_circle_mask().to(pred_bchw.device)  # 移到相同设备
-            mask = mask.unsqueeze(0).unsqueeze(0)  # 扩展为 (1, 1, 128, 128) 以匹配batch和channel维度
-
-            # 应用掩码：圆外值设为255
-            pred_bchw_masked = torch.where(mask, pred_bchw, torch.tensor(255.0, device=pred_bchw.device))
-            target_bchw_masked = torch.where(mask, target_bchw, torch.tensor(255.0, device=target_bchw.device))
-
-            # 现在可以计算你的指标了（只计算圆形区域内）
-            self.valid_mse(pred_bchw_masked, target_bchw_masked)
-            self.valid_mae(pred_bchw_masked, target_bchw_masked)
-            self.valid_ssim(pred_bchw_masked, target_bchw_masked)
-            
+            self.valid_mse(pred_bchw, target_bchw)
+            self.valid_mae(pred_bchw, target_bchw)
 
     def on_validation_epoch_end(self):
         valid_mse = self.valid_mse.compute()
         valid_mae = self.valid_mae.compute()
-        valid_ssim = self.valid_ssim.compute()
 
         self.log('valid_mse_epoch', valid_mse, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
         self.log('valid_mae_epoch', valid_mae, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log('valid_ssim_epoch', valid_ssim, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
         self.valid_mse.reset()
         self.valid_mae.reset()
-        self.valid_ssim.reset() 
 
     def test_step(self, batch, batch_idx, dataloader_idx=0):
         micro_batch_size = batch.shape[self.batch_axis]
@@ -754,33 +576,17 @@ class VAESEVIRPLModule(pl.LightningModule):
                      prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
             self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
             self.log_dict(log_dict_disc, prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-            # self.test_mse(pred_bchw, target_bchw)
-            # self.test_mae(pred_bchw, target_bchw)
-            # self.test_ssim(pred_bchw, target_bchw)
-            
-            #只计算圆内指标
-            # 假设 pred_bchw 和 target_bchw 的形状都是 (B, C, 128, 128)
-            mask =self. _create_circle_mask().to(pred_bchw.device)  # 移到相同设备
-            mask = mask.unsqueeze(0).unsqueeze(0)  # 扩展为 (1, 1, 128, 128) 以匹配batch和channel维度
-            # 应用掩码：圆外值设为255
-            pred_bchw_masked = torch.where(mask, pred_bchw, torch.tensor(255.0, device=pred_bchw.device))
-            target_bchw_masked = torch.where(mask, target_bchw, torch.tensor(255.0, device=target_bchw.device))
-            # 现在可以计算你的指标了（只计算圆形区域内）
-            self.test_mse(pred_bchw_masked, target_bchw_masked)
-            self.test_mae(pred_bchw_masked, target_bchw_masked)
-            self.test_ssim(pred_bchw_masked, target_bchw_masked)
+            self.test_mse(pred_bchw, target_bchw)
+            self.test_mae(pred_bchw, target_bchw)
 
     def on_test_epoch_end(self):
         test_mse = self.test_mse.compute()
         test_mae = self.test_mae.compute()
-        test_ssim = self.test_ssim.compute()
 
         self.log('test_mse_epoch', test_mse, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
         self.log('test_mae_epoch', test_mae, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log('test_ssim_epoch', test_ssim, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
         self.test_mse.reset()
         self.test_mae.reset()
-        self.test_ssim.reset()
 
     def save_vis_step_end(
             self,
@@ -810,12 +616,9 @@ class VAESEVIRPLModule(pl.LightningModule):
             if data_idx in example_data_idx_list:
                 save_name = f"{prefix}{mode}_epoch_{self.current_epoch}_data_{data_idx}.png"
                 num_vis = min(target.shape[0], self.oc.eval.num_vis)
-                
                 seq_list = [
-                   # target[:num_vis].squeeze(1),
-                   # pred[:num_vis].squeeze(1),
-                    target[:num_vis,0],
-                    pred[:num_vis,0],
+                    target[:num_vis].squeeze(1),
+                    pred[:num_vis].squeeze(1),
                 ]
                 label_list = [
                     "Target",
@@ -836,28 +639,15 @@ class VAESEVIRPLModule(pl.LightningModule):
             self.log_dict(norms)
 
 
-# def get_parser():
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--save', default='tmp_sevirlr', type=str)
-#     parser.add_argument('--gpus', default=1, type=int)
-#     parser.add_argument('--cfg', default=None, type=str)
-#     parser.add_argument('--test', action='store_true')
-#     parser.add_argument('--ckpt_name', default=None, type=str,
-#                         help='The model checkpoint trained on SEVIR-LR.')
-#     parser.add_argument('--pretrained', action='store_true',
-#                         help='Load pretrained checkpoints for test.')
-#     return parser
-
-# ============1127liuyi写死命令行超参数=====================
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='tmp_vae_sevirl_1130_974ckpt_e100', type=str)
+    parser.add_argument('--save', default='tmp_sevirlr', type=str)
     parser.add_argument('--gpus', default=1, type=int)
-    parser.add_argument('--cfg', default='/home/user01/personal_file/lgj/PreDiff-25fall/scripts/vae/sevirlr/cfg.yaml', type=str)
-    parser.add_argument('--test', default=False, action='store_true')
-    parser.add_argument('--ckpt_name', default="/home/user01/personal_file/lgj/PreDiff-25fall/experiments-1121-train/tmp_vae_sevirl_1130/checkpoints/974.ckpt", type=str,
+    parser.add_argument('--cfg', default=None, type=str)
+    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
-    parser.add_argument('--pretrained', default=False,action='store_true',
+    parser.add_argument('--pretrained', action='store_true',
                         help='Load pretrained checkpoints for test.')
     return parser
 
@@ -901,46 +691,27 @@ def main():
     # )
     
     # data_dir = "/home/user01/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy"
-    # data_dir = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
-    # num_files = 20  # 可改为任意数量或 None 表示全部
-
-    # dataset = NPYDataset(data_dir=data_dir, limit=num_files)
-    # train_loader = DataLoader(dataset, batch_size=micro_batch_size, shuffle=True, num_workers=8,pin_memory=True)
-    
-    # accumulate_grad_batches = total_batch_size // (micro_batch_size * args.gpus)
-    # # 训练集样本数量
-    # num_train_samples = len(train_loader.dataset)
-    # # 总训练步数
-    # total_num_steps = VAESEVIRPLModule.get_total_num_steps(
-    #     epoch=max_epochs,
-    #     num_samples=num_train_samples,
-    #     total_batch_size=total_batch_size,
-    # )
-    data_dir = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
+    data_dir = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
     num_files = None  # 可改为任意数量或 None 表示全部
-    dm = NPYDataModule(
-        data_dir=data_dir,
-        batch_size=micro_batch_size,
-        num_workers=8,
-        limit=num_files,   # 可设 None
-    )
 
-    dm.prepare_data()
-    dm.setup()
+    dataset = NPYDataset(data_dir=data_dir, limit=num_files)
+    train_loader = DataLoader(dataset, batch_size=micro_batch_size, shuffle=True, num_workers=0,pin_memory=False)
+   
     accumulate_grad_batches = total_batch_size // (micro_batch_size * args.gpus)
-    
+    # 训练集样本数量
+    num_train_samples = len(train_loader.dataset) *13
+    # 总训练步数
     total_num_steps = VAESEVIRPLModule.get_total_num_steps(
         epoch=max_epochs,
-        num_samples=dm.num_train_samples,
+        num_samples=num_train_samples,
         total_batch_size=total_batch_size,
     )
-
+    
     pl_module = VAESEVIRPLModule(
         total_num_steps=total_num_steps,
         accumulate_grad_batches=accumulate_grad_batches,
         save_dir=args.save,
         oc_file=args.cfg)
-    
     trainer_kwargs = pl_module.set_trainer_kwargs(devices=args.gpus)
     trainer = Trainer(**trainer_kwargs)
     if args.pretrained:
@@ -950,14 +721,14 @@ def main():
                                 map_location=torch.device("cpu"))
         pl_module.torch_nn_module.load_state_dict(state_dict=state_dict)
         trainer.test(model=pl_module,
-                     datamodule=dm)
+                     dataloaders=train_loader)
     elif args.test:
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
         else:
             ckpt_path = None
         trainer.test(model=pl_module,
-                     datamodule=dm,
+                     dataloaders=train_loader,
                      ckpt_path=ckpt_path)
     else:
         if args.ckpt_name is not None:
@@ -968,9 +739,8 @@ def main():
         else:
             ckpt_path = None
         trainer.fit(model=pl_module,
-                    datamodule=dm,
+                    train_dataloaders=train_loader,
                     ckpt_path=ckpt_path)
-
         # save state_dict of VAE and discriminator
         pl_ckpt = pl_load(path_or_url=trainer.checkpoint_callback.best_model_path,
                           map_location=torch.device("cpu"))
@@ -992,9 +762,8 @@ def main():
         torch.save(loss_state_dict, os.path.join(pl_module.save_dir, "checkpoints", pytorch_loss_state_dict_name))
         # test
         trainer.test(ckpt_path="best",
-                     datamodule=dm)
+                     dataloaders=train_loader)
 
 
 if __name__ == "__main__":
     main()
-    

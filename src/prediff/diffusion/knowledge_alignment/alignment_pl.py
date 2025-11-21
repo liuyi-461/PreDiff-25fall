@@ -113,6 +113,18 @@ class AlignmentPL(pl.LightningModule):
         self.instantiate_first_stage(first_stage_model)
         self.instantiate_cond_stage(cond_stage_model, cond_stage_forward)
 
+    # 创建圆形掩码
+    def _create_circle_mask(self, center=None):
+        # 创建圆形掩码：圆内为True，圆外为False
+        h = 128   # 128
+        w = 128    # 128
+        radius = 64
+        cy, cx = h // 2, w // 2
+        y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing='ij')
+        # 计算每个像素点到圆心的距离并判断是否在圆内    
+        mask = ((y - cy) ** 2 + (x - cx) ** 2) <= radius ** 2
+        return mask
+
     def parse_layout_shape(self, layout):
         parsed_dict = parse_layout_shape(layout=layout)
         self.batch_axis = parsed_dict["batch_axis"]
@@ -377,7 +389,7 @@ class AlignmentPL(pl.LightningModule):
         # other metrics
         with torch.no_grad():
             mae = F.l1_loss(pred, target).float().cpu().item()
-            avg_gt = torch.abs(target).mean().float().cpu().item()
+            avg_gt = torch.abs(target).mean().float().cpu().item()                    
         loss_dict = {
             "mae": mae,
             "avg_gt": avg_gt,

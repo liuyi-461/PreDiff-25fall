@@ -1,4 +1,7 @@
 import warnings
+from torch.utils.data import Dataset, DataLoader
+import glob
+
 from typing import Sequence, Union, Dict
 from shutil import copyfile
 import inspect
@@ -44,6 +47,44 @@ from prediff.diffusion.knowledge_alignment.sevir import SEVIRAvgIntensityAlignme
 
 pytorch_state_dict_name = "sevirlr_earthformerunet.pt"
 
+class NPYDataset(Dataset):
+    """
+    自定义数据集：从指定目录读取单个或多个 .npy 文件。
+    每个 .npy 文件形状为 (128, 128, 25) —— 即 (H, W, T)
+    """
+
+    def __init__(self, data_dir, limit=None, normalize=True):
+        """
+        Args:
+            data_dir (str): 包含 .npy 文件的目录
+            limit (int or None): 读取的文件数量，None 表示读取全部
+            normalize (bool): 是否归一化到 [0, 1]
+        """
+        self.files = sorted(glob.glob(os.path.join(data_dir, "*.npy")))
+        if limit is not None:
+            self.files = self.files[:limit]
+
+        if len(self.files) == 0:
+            raise FileNotFoundError(f"未在 {data_dir} 中找到 .npy 文件")
+
+        self.normalize = normalize
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        arr = np.load(self.files[idx])  # shape: (128, 128, 25)
+        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+        arr = np.expand_dims(arr, axis=-1)  # -> (128, 128, 25, 1)
+
+        if self.normalize:
+            # arr = arr / np.max(arr) if np.max(arr) > 0 else arr
+            arr = arr / 180.0  # 归一化到 [0, 1]
+
+        # 转换为 torch.Tensor 并调整维度为 (T, H, W, C)
+        arr = np.transpose(arr, (2, 0, 1, 3))  # (25, 128, 128, 1)
+        arr = torch.tensor(arr, dtype=torch.float32)
+        return arr
 
 def get_alignment_kwargs_avg_x(context_seq=None, target_seq=None, ):
     r"""
@@ -60,7 +101,7 @@ def get_alignment_kwargs_avg_x(context_seq=None, target_seq=None, ):
     -------
     alignment_kwargs:   Dict
     """
-    multiplier = 1.0
+    multiplier = 2.0
     batch_size = target_seq.shape[0]
     ret = torch.mean(target_seq.view(batch_size, -1),
                      dim=1, keepdim=True) * multiplier
@@ -465,7 +506,7 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
     @classmethod
     def get_dataset_config(cls):
         cfg = OmegaConf.create()
-        cfg.dataset_name = "sevirlr"
+        cfg.dataset_name = "sevir_lr"
         cfg.img_height = 128
         cfg.img_width = 128
         cfg.in_len = 7
@@ -477,12 +518,15 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
         cfg.stride = cfg.out_len
         cfg.layout = "NTHWC"
         cfg.start_date = None
-        cfg.train_val_split_date = (2019, 1, 1)
-        cfg.train_test_split_date = (2019, 6, 1)
+        #cfg.train_val_split_date = (2019, 1, 1)
+        #cfg.train_test_split_date = (2019, 6, 1)
+        cfg.train_val_split_date = (2018, 9, 6)
+        cfg.train_test_split_date = (2018, 12, 3)
         cfg.end_date = None
         cfg.metrics_mode = "0"
         cfg.metrics_list = ('csi', 'pod', 'sucr', 'bias')
-        cfg.threshold_list = (16, 74, 133, 160, 181, 219)
+        # cfg.threshold_list = (16, 74, 133, 160, 181, 219)
+        cfg.threshold_list = (11,  42.5, 52, 94, 113, 128, 155)
         cfg.aug_mode = "1"
         return cfg
 
@@ -703,8 +747,7 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             start_date=dataset_cfg["start_date"],
             train_test_split_date=dataset_cfg["train_test_split_date"],
             end_date=dataset_cfg["end_date"],
-            #val_ratio=dataset_cfg["val_ratio"],
-            val_ratio = dataset_cfg.get("val_ratio", 0.1), 
+            val_ratio=dataset_cfg["val_ratio"],
             num_workers=num_workers, )
         return dm
 
@@ -1097,16 +1140,16 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='tmp_sevirlr', type=str)
+    parser.add_argument('--save', default='tmp_sevirlr1016singlelgj', type=str)
     parser.add_argument('--nodes', default=1, type=int,
                         help="Number of nodes in DDP training.")
     parser.add_argument('--gpus', default=1, type=int,
                         help="Number of GPUS per node in DDP training.")
-    parser.add_argument('--cfg', default=None, type=str)
-    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--cfg', default='/home/user01/25fall_aiclass/ly/PreDiff/25fall_prediff_code/1014pre1/sevirlr/cfg.yaml', type=str)
+    parser.add_argument('--test', default=True, action='store_true')
     parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
-    parser.add_argument('--pretrained', action='store_true',
+    parser.add_argument('--pretrained', default=True,action='store_true',
                         help='Load pretrained checkpoints for test.')
     return parser
 
@@ -1114,18 +1157,18 @@ def get_parser():
 def main():
     parser = get_parser()
     args = parser.parse_args()
-    if args.pretrained:
-        args.cfg = os.path.abspath(os.path.join(os.path.dirname(__file__), "prediff_sevirlr_v1.yaml"))
-        # Download pretrained weights
-        download_pretrained_weights(ckpt_name=pretrained_sevirlr_vae_name,
-                                    save_dir=default_pretrained_vae_dir,
-                                    exist_ok=False)
-        download_pretrained_weights(ckpt_name=pretrained_sevirlr_earthformerunet_name,
-                                    save_dir=default_pretrained_earthformerunet_dir,
-                                    exist_ok=False)
-        download_pretrained_weights(ckpt_name=pretrained_sevirlr_alignment_name,
-                                    save_dir=default_pretrained_alignment_dir,
-                                    exist_ok=False)
+    # if args.pretrained:
+    #     args.cfg = os.path.abspath(os.path.join(os.path.dirname(__file__), "prediff_sevirlr_v1.yaml"))
+    #     # Download pretrained weights
+    #     download_pretrained_weights(ckpt_name=pretrained_sevirlr_vae_name,
+    #                                 save_dir=default_pretrained_vae_dir,
+    #                                 exist_ok=False)
+    #     download_pretrained_weights(ckpt_name=pretrained_sevirlr_earthformerunet_name,
+    #                                 save_dir=default_pretrained_earthformerunet_dir,
+    #                                 exist_ok=False)
+    #     download_pretrained_weights(ckpt_name=pretrained_sevirlr_alignment_name,
+    #                                 save_dir=default_pretrained_alignment_dir,
+    #                                 exist_ok=False)
     if args.cfg is not None:
         oc_from_file = OmegaConf.load(open(args.cfg, "r"))
         dataset_cfg = OmegaConf.to_object(oc_from_file.dataset)
@@ -1143,18 +1186,41 @@ def main():
         float32_matmul_precision = "high"
     torch.set_float32_matmul_precision(float32_matmul_precision)
     seed_everything(seed, workers=True)
-    dm = PreDiffSEVIRPLModule.get_sevir_datamodule(
-        dataset_cfg=dataset_cfg,
-        micro_batch_size=micro_batch_size,
-        num_workers=8, )
-    dm.prepare_data()
-    dm.setup()
+    
+    #dm = PreDiffSEVIRPLModule.get_sevir_datamodule(
+    #    dataset_cfg=dataset_cfg,
+    #    micro_batch_size=micro_batch_size,
+    #    num_workers=8, )
+    #dm.prepare_data()
+    #dm.setup()
+    
+    # data_dir = "/home/user01/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy"
+    data_dir = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
+    num_files = None  # 可改为任意数量或 None 表示全部
+
+    dataset = NPYDataset(data_dir=data_dir, limit=num_files)
+    train_loader = DataLoader(dataset, batch_size=micro_batch_size, shuffle=True, num_workers=8,pin_memory=True)
+    
+    
+    #accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
+    #total_num_steps = PreDiffSEVIRPLModule.get_total_num_steps(
+    #    epoch=max_epochs,
+    #    num_samples=dm.num_train_samples,
+    #    total_batch_size=total_batch_size,
+    #)
+    
     accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
+
+    # 训练集样本数量
+    num_train_samples = len(train_loader.dataset) * 13
+
+    # 总训练步数
     total_num_steps = PreDiffSEVIRPLModule.get_total_num_steps(
         epoch=max_epochs,
-        num_samples=dm.num_train_samples,
+        num_samples=num_train_samples,
         total_batch_size=total_batch_size,
     )
+    
     pl_module = PreDiffSEVIRPLModule(
         total_num_steps=total_num_steps,
         save_dir=args.save,
@@ -1173,7 +1239,7 @@ def main():
                                 map_location=torch.device("cpu"))
         pl_module.torch_nn_module.load_state_dict(state_dict=state_dict)
         trainer.test(model=pl_module,
-                     datamodule=dm)
+                     dataloaders=train_loader)
     elif args.test:
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
@@ -1188,7 +1254,7 @@ def main():
                     model_state_dict[key.replace(model_kay, "")] = val
             pl_module.torch_nn_module.load_state_dict(model_state_dict)
         trainer.test(model=pl_module,
-                     datamodule=dm, )
+                     dataloaders=train_loader)
     else:
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
@@ -1198,7 +1264,7 @@ def main():
         else:
             ckpt_path = None
         trainer.fit(model=pl_module,
-                    datamodule=dm,
+                    train_dataloaders=train_loader,
                     ckpt_path=ckpt_path)
         # save state_dict of the latent diffusion model
         pl_ckpt = pl_load(path_or_url=trainer.checkpoint_callback.best_model_path,
@@ -1216,7 +1282,7 @@ def main():
         torch.save(state_dict, os.path.join(pl_module.save_dir, "checkpoints", pytorch_state_dict_name))
         # test
         trainer.test(ckpt_path="best",
-                     datamodule=dm)
+                     dataloaders=train_loader)
 
 
 if __name__ == "__main__":
