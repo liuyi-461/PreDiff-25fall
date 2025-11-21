@@ -16,7 +16,7 @@ from ...models.cuboid_transformer.cuboid_transformer_patterns import CuboidSelfA
 from ...models.utils import apply_initialization, round_to
 
 
-class QKVAttention(nn.Module):
+class QKVAttention(nn.Module): # 计算qkv
     """
     A module which performs QKV attention and splits in a different order.
     """
@@ -46,7 +46,7 @@ class QKVAttention(nn.Module):
         return a.reshape(bs, -1, length)
 
 
-class AttentionPool3d(nn.Module):
+class AttentionPool3d(nn.Module): #3d注意力
     """
     Adapted from CLIP: https://github.com/openai/CLIP/blob/main/clip/model.py
     """
@@ -104,7 +104,7 @@ class AttentionPool3d(nn.Module):
         apply_initialization(self.c_proj, conv_mode=self.init_mode)
 
 
-class NoisyCuboidTransformerEncoder(nn.Module):
+class NoisyCuboidTransformerEncoder(nn.Module): # 将时空输入和时间步编码，用于提取时间空间语义特征，用于噪声预测网络
     r"""
     Half U-Net style CuboidTransformerEncoder that parameterizes `U(z_t, t, ...)`.
     It takes `x_t`, `t` as input.

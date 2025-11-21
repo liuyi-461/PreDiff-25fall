@@ -1,6 +1,7 @@
 """
 Code is adapted from https://github.com/CompVis/stable-diffusion/blob/21f890f9da3cfbeaba8e2ac3c425ee9e998d5229/ldm/models/diffusion/ddpm.py
-"""
+"""#基于扩散模型框架的lightning模块，作用是训练模型来预测目标函数在潜空间的输出，并通过扩散过程进行生成或对齐任务
+   #通用扩散模型训练框架，用于训练模型在潜空间中模拟目标函数，支持条件生成与潜空间扩散，适用于约束生成、对齐任务、评分引导生成等场景
 import warnings
 from typing import Sequence, Union, Dict, Any, Optional, Callable
 from functools import partial

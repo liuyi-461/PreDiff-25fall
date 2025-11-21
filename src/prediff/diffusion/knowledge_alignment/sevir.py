@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any # 实现的总函数
 import torch
 from .alignment_pl import get_sample_align_fn
 from .models import NoisyCuboidTransformerEncoder

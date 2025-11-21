@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence # 数据增强
 import random
 from torch import nn
 import torchvision.transforms.functional as TF

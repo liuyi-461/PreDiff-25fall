@@ -17,7 +17,7 @@ from diffusers.models.autoencoder_kl import AutoencoderKLOutput, DecoderOutput
 
 from ..utils.ema import LitEma
 from ..utils.distributions import DiagonalGaussianDistribution
-from .utils import make_beta_schedule, extract_into_tensor, noise_like, default
+from .utils import make_beta_schedule, extract_into_tensor, noise_like, default # 时间步噪声量变化
 from ..utils.layout import parse_layout_shape
 from ..utils.optim import disabled_train
 
@@ -327,7 +327,7 @@ class LatentDiffusion(pl.LightningModule):
         for param in self.first_stage_model.parameters():
             param.requires_grad = False
 
-    def instantiate_cond_stage(self, cond_stage_model, cond_stage_forward):
+    def instantiate_cond_stage(self, cond_stage_model, cond_stage_forward): # 条件控制
         if cond_stage_model is None:
             self.cond_stage_model = None
             self.cond_stage_forward = None

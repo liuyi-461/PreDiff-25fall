@@ -13,6 +13,7 @@ from ..utils import (
     get_activation, get_norm_layer,
     _generalize_padding, _generalize_unpadding,
     apply_initialization, round_to, WrapIdentity)
+#立方体注意力机制（Cuboid Self-Attention）与层堆叠结构
 
 
 class PosEmbed(nn.Module):
