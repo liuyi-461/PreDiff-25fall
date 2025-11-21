@@ -1,0 +1,92 @@
+Global seed set to 0
+Global seed set to 0
+/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3483.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+/data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/train_sevirlr_prediff.py:156: UserWarning: Pretrained weights for `AutoencoderKL` not set. Run for sanity check only.
+  warnings.warn(f"Pretrained weights for `AutoencoderKL` not set. Run for sanity check only.")
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 0
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=gloo
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+[rank: 0] Global seed set to 0
+
+   | Name                | Type                             | Params
+--------------------------------------------------------------------------
+0  | torch_nn_module     | CuboidTransformerUNet            | 19.1 K
+1  | model_ema           | LitEma                           | 0     
+2  | first_stage_model   | AutoencoderKL                    | 83.7 M
+3  | valid_mse           | MeanSquaredError                 | 0     
+4  | valid_mae           | MeanAbsoluteError                | 0     
+5  | valid_score         | SEVIRSkillScore                  | 0     
+6  | test_mse            | MeanSquaredError                 | 0     
+7  | test_mae            | MeanAbsoluteError                | 0     
+8  | test_ssim           | StructuralSimilarityIndexMeasure | 0     
+9  | test_score          | SEVIRSkillScore                  | 0     
+10 | test_fvd            | FrechetVideoDistance             | 12.7 M
+11 | valid_aligned_mse   | MeanSquaredError                 | 0     
+12 | valid_aligned_mae   | MeanAbsoluteError                | 0     
+13 | valid_aligned_score | SEVIRSkillScore                  | 0     
+14 | test_aligned_mse    | MeanSquaredError                 | 0     
+15 | test_aligned_mae    | MeanAbsoluteError                | 0     
+16 | test_aligned_ssim   | StructuralSimilarityIndexMeasure | 0     
+17 | test_aligned_score  | SEVIRSkillScore                  | 0     
+18 | test_aligned_fvd    | FrechetVideoDistance             | 12.7 M
+--------------------------------------------------------------------------
+19.1 K    Trainable params
+109 M     Non-trainable params
+109 M     Total params
+436.279   Total estimated model params size (MB)
+SEVIR data directory found. Skip downloading.
+**********
+PreDiffSEVIRPLModule: Running in eps-prediction mode
+Keeping EMAs of 210.
+SEVIR data directory found. Skip downloading.
+**********
+Traceback (most recent call last):
+  File "/data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/train_sevirlr_prediff.py", line 1224, in <module>
+    main()
+  File "/data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/train_sevirlr_prediff.py", line 1201, in main
+    trainer.fit(model=pl_module,
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 532, in fit
+    call._call_and_handle_interrupt(
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/call.py", line 42, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/strategies/launchers/subprocess_script.py", line 93, in launch
+    return function(*args, **kwargs)
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 571, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 980, in _run
+    results = self._run_stage()
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/trainer.py", line 1023, in _run_stage
+    self.fit_loop.run()
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/loops/fit_loop.py", line 194, in run
+    self.setup_data()
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/loops/fit_loop.py", line 222, in setup_data
+    train_dataloader = _request_dataloader(source)
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/connectors/data_connector.py", line 336, in _request_dataloader
+    return data_source.dataloader()
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/connectors/data_connector.py", line 303, in dataloader
+    return call._call_lightning_datamodule_hook(self.instance.trainer, self.name)
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/lightning/pytorch/trainer/call.py", line 166, in _call_lightning_datamodule_hook
+    return fn(*args, **kwargs)
+  File "/data/25fall_nowcasting/lsy/PreDiff-25fall/src/prediff/datasets/sevir/sevir_torch_wrap.py", line 557, in train_dataloader
+    return DataLoader(self.sevir_train,
+AttributeError: 'SEVIRLightningDataModule' object has no attribute 'sevir_train'
+usage: prediff_radarlen13.py [-h] [--data_dir DATA_DIR]
+                             [--output_dir OUTPUT_DIR]
+                             [--num_samples NUM_SAMPLES]
+                             [--batch_size BATCH_SIZE]
+prediff_radarlen13.py: error: unrecognized arguments: --cfg /data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/cfg.yaml --pretrained
+usage: train_sevirlr_avg_x.py [-h] [--save SAVE] [--nodes NODES] [--gpus GPUS]
+                              [--cfg CFG] [--test] [--finetune]
+                              [--ckpt_name CKPT_NAME]
+train_sevirlr_avg_x.py: error: argument --save: expected one argument
+Global seed set to 0
+Global seed set to 0

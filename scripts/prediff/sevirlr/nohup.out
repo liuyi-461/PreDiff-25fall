@@ -1,0 +1,35 @@
+usage: prediff_radarlen13.py [-h] [--data_dir DATA_DIR]
+                             [--output_dir OUTPUT_DIR]
+                             [--num_samples NUM_SAMPLES]
+                             [--batch_size BATCH_SIZE]
+prediff_radarlen13.py: error: unrecognized arguments: --pretrained --save tmp_results
+--2025-11-07 14:09:56--  https://ifknrw.sn.files.1drv.com/y4mHwaGuDSwdB23r1gQvSPgRbxYnqDJleZA725wzW0qHyGvDWITlvKgWzEGJeqNSH_QUpMWOsD3-DRgtT4FFR3FjbjrSCpq9mA7qMdoORSl6un65pJ0mpFLN0iukIGAPVC4AIIZNJAq8LQIo6KVZUOdjSEbBtfaKDwislTnL7lGI15VSwX2DNXBbLWjqTzy6afmBFFxVDArCrkjtbs_st4prWEqAcNF559zLQ8zhdKEv2s?AVOverride=1
+Resolving ifknrw.sn.files.1drv.com (ifknrw.sn.files.1drv.com)... 150.171.22.11, 2620:1ec:50::11
+Connecting to ifknrw.sn.files.1drv.com (ifknrw.sn.files.1drv.com)|150.171.22.11|:443... connected.
+HTTP request sent, awaiting response... 404 Not Found
+2025-11-07 14:09:58 ERROR 404: Not Found.
+
+--2025-11-07 14:09:58--  https://xiiula.sn.files.1drv.com/y4m7WESstIWGBGRDr5u4Zs-lYTF1Pf1XNOajmULFfBNcEJ5c0du5L2uy8NPDtbueTv15gIZaVQF7-YLtOaLrkD8KLjnEr_KFVGpVd-K3nt6cWyGcQZqaJvNr8wLUr6AacMh7t6PGuts2B1OKHYqzssr5HAtS3tr80sIRhgNekxV5mcxdlphj4hdghaelP01O4mdNCSKgewMO3Qn-zQDlM_7SZwSCl-fH70hbMzBfYN62wQ?AVOverride=1
+Resolving xiiula.sn.files.1drv.com (xiiula.sn.files.1drv.com)... 150.171.22.11, 2620:1ec:50::11
+Connecting to xiiula.sn.files.1drv.com (xiiula.sn.files.1drv.com)|150.171.22.11|:443... connected.
+HTTP request sent, awaiting response... 404 Not Found
+2025-11-07 14:09:59 ERROR 404: Not Found.
+
+数据目录: /data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13
+输出目录: tmp_results
+创建数据加载器...
+找到 5289 个数据文件
+下载预训练权重...
+加载VAE...
+Traceback (most recent call last):
+  File "/data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/prediff_radarlen13.py", line 304, in <module>
+    main()
+  File "/data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/prediff_radarlen13.py", line 235, in main
+    model = create_prediff_model()
+  File "/data/25fall_nowcasting/lsy/PreDiff-25fall/scripts/prediff/sevirlr/prediff_radarlen13.py", line 110, in create_prediff_model
+    vae_state_dict = torch.load(vae_ckpt_path, map_location="cpu")
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/torch/serialization.py", line 815, in load
+    return _legacy_load(opened_file, map_location, pickle_module, **pickle_load_args)
+  File "/home/user01/miniconda3/envs/prediff_lsy/lib/python3.10/site-packages/torch/serialization.py", line 1033, in _legacy_load
+    magic_number = pickle_module.load(f, **pickle_load_args)
+EOFError: Ran out of input

@@ -121,6 +121,21 @@ class AlignmentPL(pl.LightningModule):
         self.w_axis = parsed_dict["w_axis"]
         self.c_axis = parsed_dict["c_axis"]
         self.all_slice = [slice(None, None), ] * len(layout)
+        
+    # 添加圆形掩码
+    def create_circle_mask(self, center=None):
+    #创建圆形掩码：圆内为True，圆外为False
+        h = 128  # 图像高度
+        w = 128  # 图像宽度  
+        radius = 64  # 半径
+        cy, cx = h // 2, w // 2  # 圆心坐标
+    
+    # 创建坐标网格
+        y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing='ij')
+    
+    # 计算每个像素点到圆心的距离并判断是否在圆内
+        mask = ((y - cy) ** 2 + (x - cx) ** 2) <= radius ** 2
+        return mask
 
     def extract_into_tensor(self, a, t, x_shape):
         return extract_into_tensor(a=a, t=t, x_shape=x_shape,
@@ -373,11 +388,23 @@ class AlignmentPL(pl.LightningModule):
         zt = self.q_sample(x_start=z, t=t, noise=torch.randn_like(z))
         target = self.target_fn(x, y, **aux_input_dict)
         pred = self.torch_nn_module(zt, t, y=y, zc=zc, **aux_input_dict)
-        loss = self.loss_fn(pred, target)
+        #loss = self.loss_fn(pred, target)
+        # 创建圆形掩码并移到相应设备
+        mask = self.create_circle_mask().to(pred.device)
+        mask = mask.unsqueeze(0).unsqueeze(0)  # 扩展为 (1, 1, 128, 128)
+
+        # 应用掩码：圆外值设为255，圆内保持原值
+        pred_masked = torch.where(mask, pred, torch.tensor(255.0, device=pred.device))
+        target_masked = torch.where(mask, target, torch.tensor(255.0, device=target.device))
+        # 使用掩码后的数据计算loss
+        loss = self.loss_fn(pred_masked, target_masked)
+
         # other metrics
         with torch.no_grad():
-            mae = F.l1_loss(pred, target).float().cpu().item()
-            avg_gt = torch.abs(target).mean().float().cpu().item()
+            #mae = F.l1_loss(pred, target).float().cpu().item()
+            #avg_gt = torch.abs(target).mean().float().cpu().item()
+            mae = F.l1_loss(pred_masked, target_masked).float().cpu().item()
+            avg_gt = torch.abs(target_masked).mean().float().cpu().item()           
         loss_dict = {
             "mae": mae,
             "avg_gt": avg_gt,

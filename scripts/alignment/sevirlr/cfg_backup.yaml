@@ -1,7 +1,5 @@
 dataset:
-  dataset_name: "sevirlr_npy13"
-  # 说明数据路径
-  sevir_dir: "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
+  dataset_name: "sevirlr"
   img_height: 128
   img_width: 128
   in_len: 7
@@ -11,7 +9,6 @@ dataset:
   interval_real_time: 10
   sample_mode: "sequent"
   stride: 6
-  #stride: 1
   layout: "NTHWC"
   start_date: null
   train_test_split_date: [2019, 6, 1]
@@ -19,9 +16,7 @@ dataset:
   val_ratio: 0.1
   metrics_mode: "0"
   metrics_list: ['csi', 'pod', 'sucr', 'bias']
-  #threshold_list: [16, 74, 133, 160, 181, 219]
-  threshold_list: [64, 84, 104, 124, 144, 164, 184]
-  # aug_mode: "2"
+  threshold_list: [16, 74, 133, 160, 181, 219]
   aug_mode: "2"
 layout:
   in_len: 7
@@ -36,16 +31,14 @@ optim:
   seed: 0
   float32_matmul_precision: "high"
   method: "adamw"
-  #lr: 1.0e-3
-  lr: 1.0e-5
+  lr: 1.0e-3
   wd: 1.0e-2
   betas: [0.9, 0.999]
   gradient_clip_val: 1.0
   max_epochs: 1000
   loss_type: "l2"
   # scheduler
-  #warmup_percentage: 0.1
-  warmup_percentage: 0.01
+  warmup_percentage: 0.1
   lr_scheduler_mode: "cosine"
   min_lr_ratio: 1.0e-3
   warmup_min_lr_ratio: 0.1
@@ -64,16 +57,15 @@ logging:
   use_wandb: false
   profiler: null
 trainer:
-  # check_val_every_n_epoch: 5
-  check_val_every_n_epoch: 25
+  check_val_every_n_epoch: 5
   log_step_ratio: 0.001
   precision: 32
   find_unused_parameters: false
   num_sanity_val_steps: 2
 eval:
-  train_example_data_idx_list: [0]
-  val_example_data_idx_list: [0,16]
-  test_example_data_idx_list: [0,16]
+  train_example_data_idx_list: []
+  val_example_data_idx_list: []
+  test_example_data_idx_list: []
   eval_example_only: false
   num_samples_per_context: 1
   save_gif: false
@@ -143,7 +135,7 @@ model:
       readout_seq: true
       out_len: 6
   vae:
-    pretrained_ckpt_path: "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/vae/pretrained_sevirlr_vae_8x8x64_v1.pt"
+    pretrained_ckpt_path: "pretrained_sevirlr_vae_8x8x64_v1.pt"
     data_channels: 1
     down_block_types: ['DownEncoderBlock2D', 'DownEncoderBlock2D', 'DownEncoderBlock2D', 'DownEncoderBlock2D']
     in_channels: 1

@@ -6,6 +6,9 @@ from collections import OrderedDict
 import multiprocessing
 import numpy as np
 import torch
+from torch.utils.data import Dataset, DataLoader
+import glob
+import os
 from torch.optim.lr_scheduler import LambdaLR, CosineAnnealingLR, SequentialLR
 import torchmetrics
 from lightning.pytorch import Trainer, seed_everything, loggers as pl_loggers
@@ -18,8 +21,6 @@ from lightning.pytorch.utilities import grad_norm
 from omegaconf import OmegaConf
 import os
 import argparse
-# lsy
-import sys
 
 from prediff.datasets.sevir.sevir_torch_wrap import SEVIRLightningDataModule
 from prediff.utils.pl_checkpoint import pl_load
@@ -77,8 +78,7 @@ class SEVIRAlignmentPLModule(AlignmentPL):
             out_channels=vae_cfg["out_channels"], )
         pretrained_ckpt_path = vae_cfg["pretrained_ckpt_path"]
         if pretrained_ckpt_path is not None:
-            state_dict = torch.load(os.path.join(default_pretrained_vae_dir, vae_cfg["pretrained_ckpt_path"]),
-                                    map_location=torch.device("cpu"))
+            state_dict = torch.load(pretrained_ckpt_path, map_location=torch.device("cpu"))
             first_stage_model.load_state_dict(state_dict=state_dict)
         else:
             warnings.warn(f"Pretrained weights for `AutoencoderKL` not set. Run for sanity check only.")
@@ -145,14 +145,11 @@ class SEVIRAlignmentPLModule(AlignmentPL):
     @staticmethod
     def get_layout_config():
         cfg = OmegaConf.create()
-        #cfg.in_len = 10
-        #cfg.out_len = 20
-        cfg.in_len = 7
-        cfg.out_len = 6
+        cfg.in_len = 10
+        cfg.out_len = 20
         cfg.img_height = 128
         cfg.img_width = 128
-        #cfg.data_channels = 4
-        cfg.data_channels = 1
+        cfg.data_channels = 4
         cfg.layout = "NTHWC"
         return cfg
 
@@ -199,7 +196,7 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.align.model_args.use_inter_ffn = True
         cfg.align.model_args.hierarchical_pos_embed = False
         cfg.align.model_args.pos_embed_type = 't+h+w'
-        cfg.align.model_args.padding_type = "zeros"
+        cfg.align.model_args.padding_type = "zero"
         cfg.align.model_args.checkpoint_level = 0
         cfg.align.model_args.use_relative_pos = True
         cfg.align.model_args.self_attn_use_final_proj = True
@@ -228,31 +225,24 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.align.model_args.out_len = 6
 
         cfg.vae = OmegaConf.create()
-        #cfg.vae.data_channels = layout_cfg.data_channels
-        cfg.vae.data_channels = 1
+        cfg.vae.data_channels = layout_cfg.data_channels
         # from stable-diffusion-v1-5
         cfg.vae.down_block_types = ['DownEncoderBlock2D', 'DownEncoderBlock2D', 'DownEncoderBlock2D', 'DownEncoderBlock2D']
-        #cfg.vae.in_channels = cfg.vae.data_channels
-        cfg.vae.in_channels = 1
+        cfg.vae.in_channels = cfg.vae.data_channels
         cfg.vae.block_out_channels = [128, 256, 512, 512]
         cfg.vae.act_fn = 'silu'
-        #cfg.vae.latent_channels = 4
-        cfg.vae.latent_channels = 64
+        cfg.vae.latent_channels = 4
         cfg.vae.up_block_types = ['UpDecoderBlock2D', 'UpDecoderBlock2D', 'UpDecoderBlock2D', 'UpDecoderBlock2D']
         cfg.vae.norm_num_groups = 32
         cfg.vae.layers_per_block = 2
-        #cfg.vae.out_channels = cfg.vae.data_channels
-        cfg.vae.out_channels = 1
-        #add a line to specify the pretrained ckpt path
-        #cfg.vae.pretrained_ckpt_path = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/vae/pretrained_sevirlr_vae_8x8x64_v1.pt"
-        cfg.vae.pretrained_ckpt_path = "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/vae/pretrained_sevirlr_vae_8x8x64_v1.pt"
+        cfg.vae.out_channels = cfg.vae.data_channels
         return cfg
 
     @classmethod
     def get_dataset_config(cls):
         cfg = OmegaConf.create()
-        #cfg.dataset_name = "sevir_lr"
-        cfg.dataset_name = "sevirlr"
+        cfg.dataset_name = "sevir_lr"
+        #cfg.data_root = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_530test"
         cfg.img_height = 128
         cfg.img_width = 128
         cfg.in_len = 7
@@ -271,8 +261,6 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.metrics_list = ('csi', 'pod', 'sucr', 'bias')
         cfg.threshold_list = (16, 74, 133, 160, 181, 219)
         cfg.aug_mode = "1"
-            # ============ 确保 val_ratio 设置正确 ============
-        cfg.val_ratio = 0.1
         return cfg
 
     @staticmethod
@@ -462,44 +450,96 @@ class SEVIRAlignmentPLModule(AlignmentPL):
             epoch = cls.get_optim_config().max_epochs
         return int(epoch * num_samples / total_batch_size)
 
+    #@staticmethod
+    # def get_sevir_datamodule(dataset_cfg,
+    #                          micro_batch_size: int = 1,
+    #                          num_workers: int = 0):
+    #     dm = SEVIRLightningDataModule(
+    #         seq_len=dataset_cfg["seq_len"],
+    #         sample_mode=dataset_cfg["sample_mode"],
+    #         stride=dataset_cfg["stride"],
+    #         batch_size=micro_batch_size,
+    #         layout="NTHWC" ,
+    #         output_type=np.float32,
+    #         preprocess=True,
+    #         rescale_method="01",
+    #         verbose=False,
+    #         aug_mode=dataset_cfg["aug_mode"],
+    #         ret_contiguous=False,
+    #         # datamodule_only
+    #         dataset_name=dataset_cfg["dataset_name"],
+    #         start_date=dataset_cfg["start_date"],
+    #         train_test_split_date=dataset_cfg["train_test_split_date"],
+    #         end_date=dataset_cfg["end_date"],
+    #         val_ratio=dataset_cfg["val_ratio"],
+    #         num_workers=num_workers, 
+    #         npy_dir="/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_correct"
+    #     )
+    #     return dm
     @staticmethod
     def get_sevir_datamodule(dataset_cfg,
-                             micro_batch_size: int = 1,
-                             num_workers: int = 8):
-        dm = SEVIRLightningDataModule(
-            seq_len=dataset_cfg["seq_len"],
-            sample_mode=dataset_cfg["sample_mode"],
-            #stride=dataset_cfg["stride"],
-            stride=1,
-            batch_size=micro_batch_size,
-            layout=dataset_cfg["layout"],
-            output_type=np.float32,
-            preprocess=True,
-            rescale_method="01",
-            verbose=False,
-            aug_mode=dataset_cfg["aug_mode"],
-            ret_contiguous=False,
-            # datamodule_only
-            dataset_name=dataset_cfg["dataset_name"],
-            start_date=dataset_cfg["start_date"],
-            train_test_split_date=dataset_cfg["train_test_split_date"],
-            end_date=dataset_cfg["end_date"],
-            val_ratio=dataset_cfg["val_ratio"],
-            num_workers=0,
-            npy_dir="/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
-        )
-        return dm
+                         micro_batch_size: int = 1,
+                         num_workers: int = 0):
+        
+        class SimpleNPYDataset(Dataset):
+            def __init__(self, npy_dir, seq_len=13):
+                self.npy_files = sorted(glob.glob(os.path.join(npy_dir, "*.npy")))
+                self.seq_len = seq_len
+                print(f"找到 {len(self.npy_files)} 个数据文件")
+            
+            def __len__(self):
+                return len(self.npy_files)
+            
+            def __getitem__(self, idx):
+            # 加载数据 (13, 128, 128, 1)
+                data = np.load(self.npy_files[idx])
+            
+            # 转换为 torch tensor 并确保形状正确
+                data = torch.from_numpy(data).float()  # (13, 128, 128, 1)
+            
+            # 重新排列维度为 (C, T, H, W) 或模型期望的格式
+                data = data.permute(3, 0, 1, 2)  # (1, 13, 128, 128)
+            
+                return data
+        # 定义数据模块类
+        class SimpleDataModule:
+            def __init__(self, data_dir, batch_size):
+                self.data_dir = data_dir
+                self.batch_size = batch_size
+                self.num_train_samples = 0
+            
+            def prepare_data(self):
+                pass
+            
+            def setup(self, stage=None):
+                dataset = SimpleNPYDataset(self.data_dir)
+                total_size = len(dataset)
+                train_size = int(0.8 * total_size)
+                val_size = int(0.1 * total_size)
+                test_size = total_size - train_size - val_size
+            
+                self.train_dataset, self.val_dataset, self.test_dataset = torch.utils.data.random_split(
+                    dataset, [train_size, val_size, test_size]
+                )
 
-    @property
-    def in_slice(self):
-        if not hasattr(self, "_in_slice"):
-            in_slice, out_slice = layout_to_in_out_slice(
-                layout=self.oc.layout.layout,
-                in_len=self.oc.layout.in_len,
-                out_len=self.oc.layout.out_len)
-            self._in_slice = in_slice
-            self._out_slice = out_slice
-        return self._in_slice
+                         # 创建数据加载器
+                self._train_loader = DataLoader(self.train_dataset, batch_size=self.micro_batch_size, shuffle=True, num_workers=0)
+                self._val_loader = DataLoader(self.val_dataset, batch_size=self.micro_batch_size, shuffle=False, num_workers=0)
+                self._test_loader = DataLoader(self.test_dataset, batch_size=self.micro_batch_size, shuffle=False, num_workers=0)
+            
+                self.num_train_samples = len(self.train_dataset)
+
+        def train_dataloader(self):
+                return self._train_loader
+            
+        def val_dataloader(self):
+            return self._val_loader
+            
+        def test_dataloader(self):
+            return self._test_loader
+            
+        def prepare_data(self):
+            pass 
 
     @property
     def out_slice(self):
@@ -559,16 +599,13 @@ class SEVIRAlignmentPLModule(AlignmentPL):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='KA_training_1', type=str)
+    parser.add_argument('--save', default='tmp_sevirlr_avg_x', type=str)
     parser.add_argument('--nodes', default=1, type=int,
                         help="Number of nodes in DDP training.")
     parser.add_argument('--gpus', default=1, type=int,
                         help="Number of GPUS per node in DDP training.")
-    parser.add_argument('--cfg', default='/home/user01/25fall_nowcasting/lsy/PreDiff-25fall/scripts/alignment/sevirlr/cfg.yaml', type=str)
-    parser.add_argument('--test', default=False,action='store_true')
-    parser.add_argument("--finetune", default=True, action="store_true",
-                    help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
-
+    parser.add_argument('--cfg', default=None, type=str)
+    parser.add_argument('--test', action='store_true')
     parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
     return parser
@@ -594,16 +631,17 @@ def main():
         float32_matmul_precision = "high"
     torch.set_float32_matmul_precision(float32_matmul_precision)
     seed_everything(seed, workers=True)
-    # create datamodule lsy
-    from complete_fixed_datamodule import CompleteFixedSEVIRDataModule
-    dm = CompleteFixedSEVIRDataModule(
+    dm = SEVIRAlignmentPLModule.get_sevir_datamodule(
         dataset_cfg=dataset_cfg,
         micro_batch_size=micro_batch_size,
-        target_length=13
-    )
-    
+        num_workers=0, 
+        )
     dm.prepare_data()
     dm.setup()
+
+    # 添加样本数量检查lsy
+    if not hasattr(dm, 'num_train_samples') or dm.num_train_samples == 0:
+        dm.num_train_samples = 424  # 530 * 0.8
     accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
     total_num_steps = SEVIRAlignmentPLModule.get_total_num_steps(
         epoch=max_epochs,
@@ -629,25 +667,8 @@ def main():
                      datamodule=dm,
                      ckpt_path=ckpt_path)
     else:
-        # ====== 新增 fine-tune 初始化 ======
-        if args.finetune:
-            print("[INFO] Fine-tuning: loading pretrained Earthformer-UNet weights as initialization...")
-            earthformerunet_ckpt_path = '/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/alignment/pretrained_sevirlr_alignment_avg_x_cuboid_v1.pt'
-            if not os.path.exists(earthformerunet_ckpt_path):
-                raise FileNotFoundError(f"Pretrained checkpoint not found: {earthformerunet_ckpt_path}")
-            pretrained_state = torch.load(earthformerunet_ckpt_path, map_location=torch.device("cpu"))
-
-            # 加载时允许不完全匹配
-            missing_keys, unexpected_keys = pl_module.torch_nn_module.load_state_dict(
-                pretrained_state, strict=False)
-            print(f"[Fine-tune Init] Missing keys: {missing_keys}")
-            print(f"[Fine-tune Init] Unexpected keys: {unexpected_keys}")
-            print("[Fine-tune Init] Pretrained weights loaded successfully. Continue training...")
-        # ====== end fine-tune ======
-
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
-            # ckpt_path = '/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/alignment/pretrained_sevirlr_alignment_avg_x_cuboid_v1.pt'
             if not os.path.exists(ckpt_path):
                 warnings.warn(f"ckpt {ckpt_path} not exists! Start training from epoch 0.")
                 ckpt_path = None
