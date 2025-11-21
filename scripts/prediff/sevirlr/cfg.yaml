@@ -1,5 +1,7 @@
-dataset:
-  dataset_name: "sevirlr"
+dataset: #数据加载方式
+  # dataset_name: "sevirlr"
+  dataset_name: "sevirlr_npy"
+  sevir_dir: /data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13/
   img_height: 128
   img_width: 128
   in_len: 7
@@ -11,21 +13,22 @@ dataset:
   stride: 6
   layout: "NTHWC"
   start_date: null
-  train_test_split_date: [2019, 6, 1]
+  train_test_split_date: [2019, 1, 1]
+  #train_test_split_date: [2018, 10, 10]
   end_date: null
-  val_ratio: 0.1
+  val_ratio: 0.15
   metrics_mode: "0"
   metrics_list: ['csi', 'pod', 'sucr', 'bias']
   threshold_list: [16, 74, 133, 160, 181, 219]
   aug_mode: "2"
-layout:
+layout: #控制输入输出时空结构
   in_len: 7
   out_len: 6
   img_height: 128
   img_width: 128
   data_channels: 1
   layout: "NTHWC"
-optim:
+optim: # 优化器与训练
   total_batch_size: 64
   micro_batch_size: 2
   seed: 0
@@ -35,7 +38,7 @@ optim:
   wd: 1.0e-5
   betas: [0.9, 0.999]
   gradient_clip_val: 1.0
-  max_epochs: 2000
+  max_epochs: 100
   loss_type: "l2"
   # scheduler
   warmup_percentage: 0.1
@@ -49,7 +52,7 @@ optim:
   early_stop_mode: "min"
   early_stop_patience: 100
   save_top_k: 3
-logging:
+logging: #日志与保存设置
   logging_prefix: "PreDiff"
   monitor_lr: true
   monitor_device: false
@@ -57,25 +60,33 @@ logging:
   use_wandb: false
   profiler: null
   save_npy: true
-trainer:
+trainer: # PyTorch Lightning 训练器设置
   check_val_every_n_epoch: 50
   log_step_ratio: 0.001
   precision: 32
   find_unused_parameters: false
   num_sanity_val_steps: 2
-eval:
+eval: # 验证/测试可视化与样本索引
+  # #原始
+  # train_example_data_idx_list: [0, ]
+  # val_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128]
+  # test_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128]
+  # eval_example_only: true ########################################################################true是指运行索引样本，false测试所有样本，但只保存指定样本图像
+  
+  #修改
   train_example_data_idx_list: [0, ]
   val_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128]
   test_example_data_idx_list: [0, 16, 32, 48, 64, 72, 96, 108, 128]
-  eval_example_only: true
-  eval_aligned: false
-  eval_unaligned: true
+  eval_example_only: false ########################################################################true是指运行索引样本，false测试所有样本，但只保存指定样本图像
+  
+  eval_aligned: false #是否启用有对齐模式
+  eval_unaligned: true #是否启用无对齐模式
   num_samples_per_context: 1
   fs: 20
   label_offset: [-0.5, 0.5]
   label_avg_int: false
   fvd_features: 400
-model:
+model: # 模型结构配置
   diffusion:
     data_shape: [6, 128, 128, 1]
     timesteps: 1000

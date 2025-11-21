@@ -19,10 +19,10 @@ import os
 # 固定绝对路径版本配置
 # ==============================
 
-ROOT_DIR = "/data/25fall_nowcasting/ly/PreDiff-25fall"
+ROOT_DIR = "/data/25fall_nowcasting/cyr/PreDiff-25fall"
 
 # ---- Experiments ----
-default_exps_dir = os.path.join(ROOT_DIR, "experiments1016")
+default_exps_dir = os.path.join(ROOT_DIR, "experiments-25fall")
 
 ROOT_DIR_pub = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff"
 # ---- Datasets ----

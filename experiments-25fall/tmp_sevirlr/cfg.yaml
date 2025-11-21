@@ -1,7 +1,5 @@
 dataset:
-  # dataset_name: "sevirlr"
-  dataset_name: "sevirlr_npy"
-  sevir_dir: /data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_530test/
+  dataset_name: "sevirlr"
   img_height: 128
   img_width: 128
   in_len: 7
@@ -13,11 +11,9 @@ dataset:
   stride: 6
   layout: "NTHWC"
   start_date: null
-  train_test_split_date: [2019, 1, 1]
-  #train_test_split_date: [2018, 10, 10]
+  train_test_split_date: [2019, 6, 1]
   end_date: null
-  # val_ratio: 0.1
-  val_ratio: 0.15
+  val_ratio: 0.1
   metrics_mode: "0"
   metrics_list: ['csi', 'pod', 'sucr', 'bias']
   threshold_list: [16, 74, 133, 160, 181, 219]
@@ -39,7 +35,7 @@ optim:
   wd: 1.0e-5
   betas: [0.9, 0.999]
   gradient_clip_val: 1.0
-  max_epochs: 100
+  max_epochs: 2000
   loss_type: "l2"
   # scheduler
   warmup_percentage: 0.1

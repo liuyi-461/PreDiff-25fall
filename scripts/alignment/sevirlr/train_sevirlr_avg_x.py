@@ -239,7 +239,7 @@ class SEVIRAlignmentPLModule(AlignmentPL):
     @classmethod
     def get_dataset_config(cls):
         cfg = OmegaConf.create()
-        cfg.dataset_name = "sevir_lr"
+        cfg.dataset_name = "sevirlr"
         cfg.img_height = 128
         cfg.img_width = 128
         cfg.in_len = 7
@@ -258,6 +258,8 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.metrics_list = ('csi', 'pod', 'sucr', 'bias')
         cfg.threshold_list = (16, 74, 133, 160, 181, 219)
         cfg.aug_mode = "1"
+        #xiugai
+        cfg.val_ratio = 0.1
         return cfg
 
     @staticmethod
@@ -573,6 +575,8 @@ def main():
         float32_matmul_precision = "high"
     torch.set_float32_matmul_precision(float32_matmul_precision)
     seed_everything(seed, workers=True)
+    print(">>> dataset_cfg 完整内容：", dataset_cfg)
+    print(">>> sevir_dir 值：", dataset_cfg.get("sevir_dir"))
     dm = SEVIRAlignmentPLModule.get_sevir_datamodule(
         dataset_cfg=dataset_cfg,
         micro_batch_size=micro_batch_size,

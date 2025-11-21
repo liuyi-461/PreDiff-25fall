@@ -35,7 +35,8 @@ PREPROCESS_OFFSET_SEVIR = {'vis': 0,  # Not utilized in original paper
 PREPROCESS_SCALE_01 = {'vis': 1,
                        'ir069': 1,
                        'ir107': 1,
-                       'vil': 1 / 255,  # currently the only one implemented
+                       #'vil': 1 / 255,  # currently the only one implemented
+                       'vil': 1 / 180,
                        'lght': 1}
 PREPROCESS_OFFSET_01 = {'vis': 0,
                         'ir069': 0,
@@ -119,7 +120,9 @@ class SEVIRDataLoader:
                  preprocess: bool = True,
                  rescale_method: str = '01',
                  downsample_dict: Dict[str, Sequence[int]] = None,
-                 verbose: bool = False):
+                 verbose: bool = False,
+                 data_source: str = 'h5',          
+                 npy_prefix: str = None):
         r"""
         Parameters
         ----------
@@ -199,6 +202,10 @@ class SEVIRDataLoader:
         self._dtypes = SEVIR_RAW_DTYPES
         self.lght_frame_times = LIGHTING_FRAME_TIMES
         self.data_shape = SEVIR_DATA_SHAPE
+        self.data_source = data_source.lower()   
+        self.npy_prefix  = npy_prefix
+        if self.data_source == 'npy':
+            assert self.npy_prefix is not None, 'npy_prefix must be given when data_source="npy"'
 
         self.raw_seq_len = raw_seq_len
         assert seq_len <= self.raw_seq_len, f'seq_len must not be larger than raw_seq_len = {raw_seq_len}, got {seq_len}.'
@@ -258,6 +265,12 @@ class SEVIRDataLoader:
         Computes the list of samples in catalog to be used. This sets self._samples
         """
         # locate all events containing colocated data_types
+        #xiugai
+        if self.data_source == 'npy':
+            self.catalog = self._scan_npy_catalog()
+        if self.catalog.empty:
+            raise RuntimeError(f'No npy found under {self.npy_prefix}')
+        return
         imgt = self.data_types
         imgts = set(imgt)
         filtcat = self.catalog[ np.logical_or.reduce([self.catalog.img_type==i for i in imgt]) ]
@@ -269,6 +282,25 @@ class SEVIRDataLoader:
         self._samples = filtcat.groupby('id').apply(lambda df: self._df_to_series(df,imgt) )
         if self.shuffle:
             self.shuffle_samples()
+#xiugai
+    def _scan_npy_catalog(self):
+        import glob, os
+        npy_files = glob.glob(os.path.join(self.npy_prefix, '*.npy'))
+        if not npy_files:
+            return pd.DataFrame()   # 空表，后面会抛错
+
+        records = []
+        for fp in npy_files:
+            ev_id = os.path.splitext(os.path.basename(fp))[0]          # 文件名即事件 ID
+            records.append({
+                'id': ev_id,
+                'file_name': f'{ev_id}.npy',
+                'file_index': 0,      # npy 里只有 1 条序列，固定 0
+                'img_type': 'vil',
+                'pct_missing': 0,     # 本地文件默认完整
+                'time_utc': datetime.datetime(2020, 1, 1),  # 假时间，后面不用即可
+            })
+        return pd.DataFrame(records)
 
     def shuffle_samples(self):
         self._samples = self._samples.sample(frac=1, random_state=self.shuffle_seed)
@@ -288,6 +320,7 @@ class SEVIRDataLoader:
         """
         Opens HDF files
         """
+        """
         imgt = self.data_types
         hdf_filenames = []
         for t in imgt:
@@ -297,6 +330,29 @@ class SEVIRDataLoader:
             if verbose:
                 print('Opening HDF5 file for reading', f)
             self._hdf_files[f] = h5py.File(self.sevir_data_dir + '/' + f, 'r')
+        """
+        if self.data_source == 'h5':
+        # 原 HDF5 分支完全不动
+            imgt = self.data_types
+            hdf_filenames = []
+            for t in imgt:
+                hdf_filenames += list(np.unique(self._samples[f'{t}_filename'].values))
+            self._hdf_files = {}
+            for f in hdf_filenames:
+                if verbose:
+                    print('Opening HDF5 file for reading', f)
+                self._hdf_files[f] = h5py.File(os.path.join(self.sevir_data_dir, f), 'r')
+        else:  
+            self._npy_files = {}   
+            for _, row in self._samples.iterrows():
+                ev_id = row.name          
+                if ev_id in self._npy_files:
+                    continue
+                self._npy_files[ev_id] = {}
+                for t in self.data_types:
+                    self._npy_files[ev_id][t] = os.path.join(
+                    self.npy_prefix, t, f'{ev_id}.npy')
+            self._hdf_files = self._npy_files
 
     def close(self):
         """
@@ -373,6 +429,7 @@ class SEVIRDataLoader:
         data
             Updated data. Updated shape = (tmp_batch_size + 1, height, width, raw_seq_len).
         """
+        """
         imgtyps = np.unique([x.split('_')[0] for x in list(row.keys())])
         for t in imgtyps:
             fname = row[f'{t}_filename']
@@ -386,6 +443,33 @@ class SEVIRDataLoader:
                 data_i = self._hdf_files[fname][t][idx:idx + 1, :, :, t_slice]
             data[t] = np.concatenate((data[t], data_i), axis=0) if (t in data) else data_i
 
+        return data
+        """
+        imgtyps = np.unique([x.split('_')[0] for x in list(row.keys())])
+        for t in imgtyps:
+            fname = row[f'{t}_filename']   # 在 npy 分支下这里其实是 event_id
+            idx   = row[f'{t}_index']      # 在 npy 分支下无意义，占位
+            t_slice = slice(0, None)
+
+            if self.data_source == 'h5':
+            # 原 HDF5 逻辑
+                if t == 'lght':
+                    lght_data = self._hdf_files[fname][idx][:]
+                    data_i = self._lght_to_grid(lght_data, t_slice)
+                else:
+                    data_i = self._hdf_files[fname][t][idx:idx + 1, :, :, t_slice]
+            else:  # npy
+            # 直接 load .npy，形状约定 (1, H, W, T_raw)
+                npy_path = self._hdf_files[fname][t]   # 复用 _hdf_files 变量
+                data_i = np.load(npy_path)             # 已经在磁盘上存好 (1,H,W,T_raw)
+                if t == 'lght':
+                # 如果 lightning 也是 grid 化好的，可直接用；否则在这里再转一次
+                    data_i = self._lght_to_grid(data_i[0], t_slice)
+                else:
+                    data_i = data_i[..., t_slice]      # 可能还要切时间
+
+        # 统一拼 batch
+            data[t] = np.concatenate((data[t], data_i), axis=0) if (t in data) else data_i
         return data
 
     def _lght_to_grid(self, data, t_slice=slice(0, None)):

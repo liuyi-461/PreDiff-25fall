@@ -60,7 +60,7 @@ def get_alignment_kwargs_avg_x(context_seq=None, target_seq=None, ):
     -------
     alignment_kwargs:   Dict
     """
-    multiplier = 2.0
+    multiplier = 1.0
     batch_size = target_seq.shape[0]
     ret = torch.mean(target_seq.view(batch_size, -1),
                      dim=1, keepdim=True) * multiplier
@@ -198,11 +198,13 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                 model_type=knowledge_alignment_cfg["model_type"],
                 model_args=knowledge_alignment_cfg["model_args"],
                 model_ckpt_path=alignment_ckpt_path, )
+            # 冻结alignment模型，不参与梯度更新
             disable_train(self.alignment_obj.model)
             self.alignment_model = self.alignment_obj.model
             alignment_fn = self.alignment_obj.get_mean_shift
         else:
             alignment_fn = None
+        # 仅把一个“对齐偏移函数”注册到扩散模型的 sampling 流程里
         self.set_alignment(alignment_fn=alignment_fn)
         # lr_scheduler
         self.total_num_steps = total_num_steps
@@ -682,10 +684,11 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             epoch = cls.get_optim_config().max_epochs
         return int(epoch * num_samples / total_batch_size)
 
+    # 在 PreDiffSEVIRPLModule 类内
     @staticmethod
     def get_sevir_datamodule(dataset_cfg,
-                             micro_batch_size: int = 1,
-                             num_workers: int = 8):
+                            micro_batch_size: int = 1,
+                            num_workers: int = 8):
         dm = SEVIRLightningDataModule(
             seq_len=dataset_cfg["seq_len"],
             sample_mode=dataset_cfg["sample_mode"],
@@ -700,12 +703,43 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             ret_contiguous=False,
             # datamodule_only
             dataset_name=dataset_cfg["dataset_name"],
-            start_date=dataset_cfg["start_date"],
-            train_test_split_date=dataset_cfg["train_test_split_date"],
-            end_date=dataset_cfg["end_date"],
-            val_ratio=dataset_cfg["val_ratio"],
-            num_workers=num_workers, )
+            sevir_dir=dataset_cfg.get("sevir_dir", None),  # <<< 关键：把目录传进来（NPY 用得到）
+            start_date=dataset_cfg.get("start_date", None),
+            train_test_split_date=dataset_cfg.get("train_test_split_date", None),
+            end_date=dataset_cfg.get("end_date", None),
+            val_ratio=dataset_cfg.get("val_ratio", 0.15),
+            num_workers=num_workers,
+            # NPY-only 窗口设置（用 in_len/out_len/stride 即可）
+            npy_input_len=dataset_cfg.get("in_len", 7),
+            npy_pred_len=dataset_cfg.get("out_len", 6),
+            npy_stride=dataset_cfg.get("stride", 6),
+        )
         return dm
+
+    # @staticmethod
+    # def get_sevir_datamodule(dataset_cfg,
+    #                          micro_batch_size: int = 1,
+    #                          num_workers: int = 8):
+    #     dm = SEVIRLightningDataModule(
+    #         seq_len=dataset_cfg["seq_len"],
+    #         sample_mode=dataset_cfg["sample_mode"],
+    #         stride=dataset_cfg["stride"],
+    #         batch_size=micro_batch_size,
+    #         layout=dataset_cfg["layout"],
+    #         output_type=np.float32,
+    #         preprocess=True,
+    #         rescale_method="01",
+    #         verbose=False,
+    #         aug_mode=dataset_cfg["aug_mode"],
+    #         ret_contiguous=False,
+    #         # datamodule_only
+    #         dataset_name=dataset_cfg["dataset_name"],
+    #         start_date=dataset_cfg["start_date"],
+    #         train_test_split_date=dataset_cfg["train_test_split_date"],
+    #         end_date=dataset_cfg["end_date"],
+    #         val_ratio=dataset_cfg["val_ratio"],
+    #         num_workers=num_workers, )
+    #     return dm
 
     @property
     def in_slice(self):
@@ -780,6 +814,11 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                                                                           target_seq=target_seq)
                         else:
                             raise NotImplementedError
+                        # self.sample() 是扩散过程（推理）
+                        # 当 use_alignment=True 时，会调用 alignment 模块计算一个 mean shift (get_mean_shift)
+                        # 这个 shift 调整了生成的潜变量分布，让预测的未来强度更接近目标平均亮度（或其他特征）
+                        # 这一过程没有 .backward()，完全是前向推理
+                        # alignment 模块不会更新，也不会影响 diffusion 模型的训练梯度
                         pred_seq = self.sample(
                             cond=cond,
                             batch_size=micro_batch_size,
@@ -905,7 +944,8 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
     def test_step(self, batch, batch_idx):
         micro_batch_size = batch.shape[self.batch_axis]
         data_idx = int(batch_idx * micro_batch_size)
-        if not self.eval_example_only or data_idx in self.val_example_data_idx_list:
+        # if not self.eval_example_only or data_idx in self.val_example_data_idx_list:########################################################################
+        if True:
             target_seq, cond, context_seq = \
                 self.get_input(batch, return_verbose=True)
             target_seq_bchw = rearrange(target_seq, "b t h w c -> (b t) c h w")
@@ -932,7 +972,7 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                         npy_path = os.path.join(self.npy_save_dir,
                                                 f"batch{batch_idx}_rank{self.local_rank}_sample{i}_aligned.npy")
                         np.save(npy_path, pred_seq.detach().float().cpu().numpy())
-                    aligned_pred_seq_list.append(pred_seq[0].detach().float().cpu().numpy())
+                    aligned_pred_seq_list.append(pred_seq.detach().float().cpu().numpy()) ##########################
                     aligned_pred_label_list.append(f"{self.oc.logging.logging_prefix}_aligned_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
@@ -953,7 +993,7 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                         npy_path = os.path.join(self.npy_save_dir,
                                                 f"batch{batch_idx}_rank{self.local_rank}_sample{i}.npy")
                         np.save(npy_path, pred_seq.detach().float().cpu().numpy())
-                    pred_seq_list.append(pred_seq[0].detach().float().cpu().numpy())
+                    pred_seq_list.append(pred_seq.detach().float().cpu().numpy()) ##################
                     pred_label_list.append(f"{self.oc.logging.logging_prefix}_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
@@ -969,14 +1009,32 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                 self.test_fvd.update(target_seq, real=True)
             pred_seq_list = aligned_pred_seq_list + pred_seq_list
             pred_label_list = aligned_pred_label_list + pred_label_list
-            self.save_vis_step_end(
-                data_idx=data_idx,
-                context_seq=context_seq[0].detach().float().cpu().numpy(),
-                target_seq=target_seq[0].detach().float().cpu().numpy(),
-                pred_seq=pred_seq_list,
-                pred_label=pred_label_list,
-                mode="test",
-                suffix=f"_rank{self.local_rank}", )
+            # ##只遍历1个
+            # self.save_vis_step_end( 
+            #     data_idx=data_idx,
+            #     context_seq=context_seq[0].detach().float().cpu().numpy(),
+            #     target_seq=target_seq[0].detach().float().cpu().numpy(),
+            #     pred_seq=pred_seq_list,
+            #     pred_label=pred_label_list,
+            #     mode="test",
+            #     suffix=f"_rank{self.local_rank}",
+            #     batch_idx=batch_idx, )
+
+            # 遍历 batch 内每个样本
+            for b in range(context_seq.shape[0]):  # micro_batch_size 个样本
+            # for b in range(min(context_seq.shape[0], 2)):  # 只存前2个
+                sample_data_idx = data_idx + b  # 全局样本索引
+                self.save_vis_step_end(
+                    data_idx=sample_data_idx,
+                    context_seq=context_seq[b].detach().float().cpu().numpy(),
+                    target_seq=target_seq[b].detach().float().cpu().numpy(),
+                    pred_seq=[p[b] for p in pred_seq_list],  # 注意提取每个样本的预测
+                    pred_label=pred_label_list,
+                    mode="test",
+                    suffix=f"_rank{self.local_rank}",
+                    batch_idx=batch_idx,
+                )
+                
 
     def on_test_epoch_end(self):
         if self.oc.eval.eval_unaligned:
@@ -1024,7 +1082,8 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             label_mode: str = "name",
             mode: str = "train",
             prefix: str = "",
-            suffix: str = "", ):
+            suffix: str = "",
+            batch_idx: int = None, ):
         r"""
         Parameters
         ----------
@@ -1062,8 +1121,14 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
         else:
             seq_list = [context_seq, target_seq, pred_seq]
             label_list = [context_label, target_label, pred_label]
-        if data_idx in example_data_idx_list:
-            png_save_name = f"{prefix}{mode}_epoch_{self.current_epoch}_data_{data_idx}{suffix}.png"
+        # if data_idx in example_data_idx_list: ########################################################################
+        if True:
+            # png_save_name = f"{prefix}{mode}_epoch_{self.current_epoch}_data_{data_idx}{suffix}.png" #原始
+            # png_save_name = f"{prefix}{mode}_epoch_{self.current_epoch}_batch_{batch_idx}_data_{data_idx}{suffix}.png" #修改命名使得不会重复
+            if batch_idx is not None:
+                png_save_name = f"{prefix}{mode}_epoch_{self.current_epoch}_batch_{batch_idx}_data_{data_idx}{suffix}.png"
+            else:
+                png_save_name = f"{prefix}{mode}_epoch_{self.current_epoch}_data_{data_idx}{suffix}.png"
             vis_sevir_seq(
                 save_path=os.path.join(self.example_save_dir, png_save_name),
                 seq=seq_list,
@@ -1096,35 +1161,48 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='tmp_sevirlr', type=str)
+    # parser.add_argument('--save', default='tmp_sevirlr', type=str)
+    parser.add_argument('--save', default='1107_train', type=str)
     parser.add_argument('--nodes', default=1, type=int,
                         help="Number of nodes in DDP training.")
     parser.add_argument('--gpus', default=1, type=int,
                         help="Number of GPUS per node in DDP training.")
-    parser.add_argument('--cfg', default=None, type=str)
-    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--cfg', default='/data/25fall_nowcasting/cyr/PreDiff-25fall/scripts/prediff/sevirlr/prediff_sevirlr_v1.yaml', type=str)
+    # parser.add_argument('--test', action='store_true')
+    # parser.add_argument('--ckpt_name', default=None, type=str,
+    #                     help='The model checkpoint trained on SEVIR-LR.')
+    # parser.add_argument('--pretrained', default=True,action='store_true',
+    #                     help='Load pretrained checkpoints for test.')
+    # parser.add_argument("--finetune", default=False, action="store_true",
+    #                     help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
+
+    parser.add_argument('--test', default=False, action='store_true')
     parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
-    parser.add_argument('--pretrained', action='store_true',
+    parser.add_argument('--pretrained', default=False,action='store_true',
                         help='Load pretrained checkpoints for test.')
+    parser.add_argument("--finetune", default=True, action="store_true",
+                        help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
+    # return parser
     return parser
 
 
 def main():
     parser = get_parser()
     args = parser.parse_args()
-    if args.pretrained:
-        args.cfg = os.path.abspath(os.path.join(os.path.dirname(__file__), "prediff_sevirlr_v1.yaml"))
-        # Download pretrained weights
-        download_pretrained_weights(ckpt_name=pretrained_sevirlr_vae_name,
-                                    save_dir=default_pretrained_vae_dir,
-                                    exist_ok=False)
-        download_pretrained_weights(ckpt_name=pretrained_sevirlr_earthformerunet_name,
-                                    save_dir=default_pretrained_earthformerunet_dir,
-                                    exist_ok=False)
-        download_pretrained_weights(ckpt_name=pretrained_sevirlr_alignment_name,
-                                    save_dir=default_pretrained_alignment_dir,
-                                    exist_ok=False)
+    # if args.pretrained:
+    #     args.cfg = os.path.abspath(os.path.join(os.path.dirname(__file__), "prediff_sevirlr_v1.yaml"))
+    #     # Download pretrained weights
+    #     download_pretrained_weights(ckpt_name=pretrained_sevirlr_vae_name,
+    #                                 save_dir=default_pretrained_vae_dir,
+    #                                 exist_ok=False)
+    #     download_pretrained_weights(ckpt_name=pretrained_sevirlr_earthformerunet_name,
+    #                                 save_dir=default_pretrained_earthformerunet_dir,
+    #                                 exist_ok=False)
+    #     download_pretrained_weights(ckpt_name=pretrained_sevirlr_alignment_name,
+    #                                 save_dir=default_pretrained_alignment_dir,
+    #                                 exist_ok=False)
+    # ===================================读取配置文件===========================================
     if args.cfg is not None:
         oc_from_file = OmegaConf.load(open(args.cfg, "r"))
         dataset_cfg = OmegaConf.to_object(oc_from_file.dataset)
@@ -1140,30 +1218,46 @@ def main():
         max_epochs = None
         seed = 0
         float32_matmul_precision = "high"
+    
+    # ========================================初始化==========================================
+    # 设置计算精度和随机种子
     torch.set_float32_matmul_precision(float32_matmul_precision)
     seed_everything(seed, workers=True)
+
+    # 构造数据模块并准备数据
     dm = PreDiffSEVIRPLModule.get_sevir_datamodule(
         dataset_cfg=dataset_cfg,
         micro_batch_size=micro_batch_size,
         num_workers=8, )
-    dm.prepare_data()
+    # dm.prepare_data() # 已经处理好了数据不需要再运行
     dm.setup()
+    # print("Train samples:", len(dm.train_dataloader))
+    # print("Val samples:", len(dm.val_dataset))
+    # print("Test samples:", len(dm.test_dataset))
+
+    # 梯度累积与总步数计算（当显存装不下全局 batch 时，用多步累积等效实现）
     accumulate_grad_batches = total_batch_size // (micro_batch_size * args.nodes * args.gpus)
     total_num_steps = PreDiffSEVIRPLModule.get_total_num_steps(
         epoch=max_epochs,
         num_samples=dm.num_train_samples,
         total_batch_size=total_batch_size,
     )
+
+    # 构造prediff模型与 Trainer
     pl_module = PreDiffSEVIRPLModule(
         total_num_steps=total_num_steps,
         save_dir=args.save,
         oc_file=args.cfg)
+
+    # 设定训练设备
     trainer_kwargs = pl_module.set_trainer_kwargs(
         devices=args.gpus,
         num_nodes=args.nodes,
         accumulate_grad_batches=accumulate_grad_batches,
     )
     trainer = Trainer(**trainer_kwargs)
+
+    # =======运行逻辑 1.pretrained=True则加载预训练模型进行测试 2.test=True则加载指定模型进行测试 3.否则进行训练========
     if args.pretrained:
         # load Earthformer-UNet
         earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,
@@ -1189,6 +1283,22 @@ def main():
         trainer.test(model=pl_module,
                      datamodule=dm, )
     else:
+
+        # ====== 新增 fine-tune 初始化 ====== 这段可能还有点问题，可以先不管
+        if args.finetune:
+            print("[INFO] Fine-tuning: loading pretrained Earthformer-UNetweights as initialization...")
+            earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,pretrained_sevirlr_earthformerunet_name)
+            if not os.path.exists(earthformerunet_ckpt_path):
+                raise FileNotFoundError(f"Pretrained checkpoint not found: {earthformerunet_ckpt_path}")
+            pretrained_state = torch.load(earthformerunet_ckpt_path, map_location=torch.device("cpu"))
+            # 加载时允许不完全匹配
+            missing_keys, unexpected_keys = pl_module.torch_nn_module.load_state_dict(pretrained_state, strict=False)
+            print(f"[Fine-tune Init] Missing keys: {missing_keys}")
+            print(f"[Fine-tune Init] Unexpected keys: {unexpected_keys}")
+            print("[Fine-tune Init] Pretrained weights loaded successfully. Continue training...")
+        # ====== end fine-tune ======
+
+        # ====== 原始从零训练逻辑 ======
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
             if not os.path.exists(ckpt_path):

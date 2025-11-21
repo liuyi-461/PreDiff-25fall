@@ -1,5 +1,7 @@
 dataset:
-  dataset_name: "sevirlr"
+  #dataset_name: "sevirlr"
+  dataset_name: "sevirlr_npy" 
+  sevir_dir: /data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13/
   img_height: 128
   img_width: 128
   in_len: 7
@@ -35,7 +37,7 @@ optim:
   wd: 1.0e-2
   betas: [0.9, 0.999]
   gradient_clip_val: 1.0
-  max_epochs: 1000
+  max_epochs: 100
   loss_type: "l2"
   # scheduler
   warmup_percentage: 0.1
