@@ -1,0 +1,2 @@
+test/rec_loss,test/total_loss,test/logvar,test/kl_loss,test/nll_loss,test/d_weight,test/disc_factor,test/g_loss,test/disc_loss,test/logits_real,test/logits_fake,test_mse_epoch,test_mae_epoch,epoch,step
+0.0017547139432281256,28.885892868041992,0.0,136712.328125,28.749195098876953,0.0,0.0,0.03512749820947647,0.0,-0.03512648120522499,-0.03512749820947647,1.8913642634288408e-05,0.001754711614921689,0,0

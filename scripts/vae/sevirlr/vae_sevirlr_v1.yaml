@@ -1,5 +1,6 @@
 dataset:
   dataset_name: "sevirlr"
+  sevir_dir: /data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13/
   img_height: 128
   img_width: 128
   in_len: 0

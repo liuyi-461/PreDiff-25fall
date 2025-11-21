@@ -1101,11 +1101,11 @@ def get_parser():
                         help="Number of nodes in DDP training.")
     parser.add_argument('--gpus', default=1, type=int,
                         help="Number of GPUS per node in DDP training.")
-    parser.add_argument('--cfg', default=None, type=str)
+    parser.add_argument('--cfg', default='/data/25fall_nowcasting/dly/PreDiff-25fall/scripts/prediff/sevirlr/prediff_sevirlr_v1.yaml', type=str)
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
-    parser.add_argument('--pretrained', action='store_true',
+    parser.add_argument('--pretrained', default=True,action='store_true',
                         help='Load pretrained checkpoints for test.')
     return parser
 

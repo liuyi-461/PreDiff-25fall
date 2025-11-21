@@ -194,7 +194,7 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.align.model_args.use_inter_ffn = True
         cfg.align.model_args.hierarchical_pos_embed = False
         cfg.align.model_args.pos_embed_type = 't+h+w'
-        cfg.align.model_args.padding_type = "zero"
+        cfg.align.model_args.padding_type = "zeros"
         cfg.align.model_args.checkpoint_level = 0
         cfg.align.model_args.use_relative_pos = True
         cfg.align.model_args.self_attn_use_final_proj = True
@@ -234,12 +234,14 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.vae.norm_num_groups = 32
         cfg.vae.layers_per_block = 2
         cfg.vae.out_channels = cfg.vae.data_channels
+        cfg.vae.pretrained_ckpt_path =None
+        #cfg.vae.pretrained_ckpt_path = "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/pretrained/vae/pretrained_sevirlr_vae_8x8x64_v1.pt"
         return cfg
 
     @classmethod
     def get_dataset_config(cls):
         cfg = OmegaConf.create()
-        cfg.dataset_name = "sevir_lr"
+        cfg.dataset_name = "sevirlr"
         cfg.img_height = 128
         cfg.img_width = 128
         cfg.in_len = 7
@@ -254,6 +256,7 @@ class SEVIRAlignmentPLModule(AlignmentPL):
         cfg.train_val_split_date = (2019, 1, 1)
         cfg.train_test_split_date = (2019, 6, 1)
         cfg.end_date = None
+        cfg.val_ratio = 0.1
         cfg.metrics_mode = "0"
         cfg.metrics_list = ('csi', 'pod', 'sucr', 'bias')
         cfg.threshold_list = (16, 74, 133, 160, 181, 219)
