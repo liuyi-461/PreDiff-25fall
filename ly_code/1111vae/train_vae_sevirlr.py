@@ -646,7 +646,7 @@ def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--save', default='1111_vae_1sevir_pretrained', type=str)
     parser.add_argument('--gpus', default=1, type=int)
-    parser.add_argument('--cfg', default='/data/25fall_nowcasting/ly/PreDiff-25fall/ly_code/1111vae/vae_sevirlr_v1.yaml', type=str)
+    parser.add_argument('--cfg', default='/home/user01/personal_file/ly/PreDiff-25fall/ly_code/1111vae/vae_sevirlr_v1.yaml', type=str)
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--ckpt_name', default=None, type=str,
                         help='The model checkpoint trained on SEVIR-LR.')

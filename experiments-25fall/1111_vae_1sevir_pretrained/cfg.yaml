@@ -1,10 +1,10 @@
 dataset:
-  # npy_dir: "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_128x128x30"
-  npy_dir: "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy_2019_len13"
+  npy_dir: "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_128x128x30"
+  # npy_dir: "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy_2019_len13"
   npy_num_samples: 1        # 如果想限制为前 100 个样本，或设为 null 表示使用全部
   random_split: false         # 是否在 split 前 shuffle
   split_seed: 42
-  dataset_name: "sevirlr"
+  dataset_name: "sevirlr_npy30"
   img_height: 128
   img_width: 128
   in_len: 10

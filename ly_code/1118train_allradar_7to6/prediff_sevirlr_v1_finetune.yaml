@@ -1,5 +1,5 @@
 dataset:
-  npy_dir: "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13"
+  npy_dir: "/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_mask64"
   # npy_dir: "/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy_2019_len13"
   npy_num_samples: null        # 如果想限制为前 100 个样本，或设为 null 表示使用全部
   random_split: false         # 是否在 split 前 shuffle
@@ -21,7 +21,8 @@ dataset:
   val_ratio: 0.1
   metrics_mode: "0"
   metrics_list: ['csi', 'pod', 'sucr', 'bias']
-  threshold_list: [16, 42.5, 74, 133, 160, 181, 219]
+  # threshold_list: [16, 42.5, 74, 133, 160, 181, 219]
+  threshold_list: [64, 84, 104, 124, 144, 164, 184]
   aug_mode: "2"
 layout:
   in_len: 7

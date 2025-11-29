@@ -64,11 +64,101 @@ def get_alignment_kwargs_avg_x(context_seq=None, target_seq=None, ):
     -------
     alignment_kwargs:   Dict
     """
-    multiplier = 2.0
+    multiplier = 1.0
     batch_size = target_seq.shape[0]
     ret = torch.mean(target_seq.view(batch_size, -1),
                      dim=1, keepdim=True) * multiplier
     return {"avg_x_gt": ret}
+
+from lightning.pytorch.callbacks import Callback
+
+#==============1120新增：定义训练和验证 epoch 结束打印回调，这样可以关掉ret.setdefault("enable_progress_bar", False)================
+class TrainEpochPrinter(Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        """每个训练 epoch 结束后打印一行，只管 train 相关."""
+        metrics = trainer.callback_metrics
+        epoch = trainer.current_epoch
+
+        def get_scalar(name):
+            v = metrics.get(name, None)
+            if v is None:
+                return None
+            if isinstance(v, torch.Tensor):
+                v = v.item()
+            return float(v)
+
+        train_loss = get_scalar("train/loss_epoch")
+        loss_simple = get_scalar("train/loss_simple_epoch")
+        loss_gamma = get_scalar("train/loss_gamma_epoch")
+        loss_vlb = get_scalar("train/loss_vlb_epoch")
+
+        msg_parts = [f"[Train][Epoch {epoch}]"]
+        if train_loss is not None:
+            msg_parts.append(f"loss={train_loss:.4f}")
+        if loss_simple is not None:
+            msg_parts.append(f"simple={loss_simple:.4f}")
+        if loss_gamma is not None:
+            msg_parts.append(f"gamma={loss_gamma:.4f}")
+        if loss_vlb is not None:
+            msg_parts.append(f"vlb={loss_vlb:.4f}")
+
+        print("  ".join(msg_parts), flush=True)
+        
+class ValEpochPrinter(Callback):
+    def on_validation_epoch_end(self, trainer, pl_module):
+        """每次真正跑了 validation（例如每 50 个 epoch）后打印一行."""
+        metrics = trainer.callback_metrics
+        epoch = trainer.current_epoch
+
+        def get_scalar(name):
+            v = metrics.get(name, None)
+            if v is None:
+                return None
+            if isinstance(v, torch.Tensor):
+                v = v.item()
+            return float(v)
+
+        valid_loss = get_scalar("valid_loss_epoch")
+        valid_mse  = get_scalar("valid_mse_epoch")
+        csi64      = get_scalar("valid_csi_64_epoch")
+        csi84      = get_scalar("valid_csi_84_epoch")
+        csi104      = get_scalar("valid_csi_104_epoch")
+        csi124     = get_scalar("valid_csi_124_epoch")
+        
+        val_loss = get_scalar("val/loss")
+        val_loss_simple  = get_scalar("val/loss_simple")
+        # val_loss_gamma  = get_scalar("val/loss_gamma")
+        val_loss_vlb  = get_scalar("val/loss_vlb")
+        
+
+        # 有时候 sanity check 时这些是 None，这里做个保护
+        if valid_loss is None and valid_mse is None and csi64 is None:
+            return
+
+        msg_parts = [f"[Valid][Epoch {epoch}]"]
+        if valid_loss is not None:
+            msg_parts.append(f"loss={valid_loss:.4f}")
+        if valid_mse is not None:
+            msg_parts.append(f"mse={valid_mse:.5f}")
+        if csi64 is not None:
+            msg_parts.append(f"CSI64={csi64:.3f}")
+        if csi84 is not None:
+            msg_parts.append(f"CSI84={csi84:.3f}")
+        if csi104 is not None:
+            msg_parts.append(f"CSI104={csi104:.3f}")
+        if csi124 is not None:
+            msg_parts.append(f"CSI124={csi124:.3f}")
+        if val_loss is not None:
+            msg_parts.append(f"val_loss={val_loss:.4f}")
+        if val_loss_simple is not None:
+            msg_parts.append(f"val_loss_simple={val_loss_simple:.4f}")
+        # if val_loss_gamma is not None:
+        #     msg_parts.append(f"val_loss_gamma={val_loss_gamma:.4f}")
+        if val_loss_vlb is not None:
+            msg_parts.append(f"val_loss_vlb={val_loss_vlb:.4f}")
+
+        print("  ".join(msg_parts), flush=True)
+
 
 
 class PreDiffSEVIRPLModule(LatentDiffusion):
@@ -208,6 +298,28 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
         else:
             alignment_fn = None
         self.set_alignment(alignment_fn=alignment_fn)
+        
+        # ========= 新增：构造圆形有效区域 mask =========
+        # import torch  # 保证在函数顶部已 import torch
+
+        H = oc.layout.img_height   # 128
+        W = oc.layout.img_width    # 128
+        radius = 64
+        cy, cx = H // 2, W // 2
+
+        yy, xx = torch.meshgrid(
+            torch.arange(H), torch.arange(W), indexing="ij"
+        )
+        dist2 = (yy - cy) ** 2 + (xx - cx) ** 2
+        mask_spatial = (dist2 <= radius ** 2)          # True: 有效; False: 缺测
+
+        # 形状 [1, 1, H, W, 1]，方便在 [B, T, H, W, C] 上广播
+        mask_full = mask_spatial[None, None, :, :, None]
+
+        # register_buffer: 会随 model 一起搬到 GPU
+        self.register_buffer("valid_mask", mask_full, persistent=False)
+        # ========= 新增结束 =========
+        
         # lr_scheduler
         self.total_num_steps = total_num_steps
         # logging
@@ -244,12 +356,12 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                 threshold_list=self.oc.dataset.threshold_list,
                 metrics_list=self.oc.dataset.metrics_list,
                 eps=1e-4, )
-            self.test_fvd = FrechetVideoDistance(
-                feature=self.oc.eval.fvd_features,
-                layout=self.layout,
-                reset_real_features=False,
-                normalize=False,
-                auto_t=True, )
+            # self.test_fvd = FrechetVideoDistance(
+            #     feature=self.oc.eval.fvd_features,
+            #     layout=self.layout,
+            #     reset_real_features=False,
+            #     normalize=False,
+            #     auto_t=True, )
         if self.oc.eval.eval_aligned:
             self.valid_aligned_mse = torchmetrics.MeanSquaredError()
             self.valid_aligned_mae = torchmetrics.MeanAbsoluteError()
@@ -270,12 +382,12 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                 threshold_list=self.oc.dataset.threshold_list,
                 metrics_list=self.oc.dataset.metrics_list,
                 eps=1e-4, )
-            self.test_aligned_fvd = FrechetVideoDistance(
-                feature=self.oc.eval.fvd_features,
-                layout=self.layout,
-                reset_real_features=False,
-                normalize=False,
-                auto_t=True, )
+            # self.test_aligned_fvd = FrechetVideoDistance(
+            #     feature=self.oc.eval.fvd_features,
+            #     layout=self.layout,
+            #     reset_real_features=False,
+            #     normalize=False,
+            #     auto_t=True, )
 
         self.configure_save(cfg_file_path=oc_file)
 
@@ -577,6 +689,10 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             raise NotImplementedError(f"opimization method {optim_cfg.method} not supported.")
 
         warmup_iter = int(np.round(self.oc.optim.warmup_percentage * self.total_num_steps))
+        # 🔧 防止 warmup_iter = 0 导致除零
+        if warmup_iter < 1:
+            warmup_iter = 1
+            
         if optim_cfg.lr_scheduler_mode == 'none':
             return {'optimizer': optimizer}
         else:
@@ -632,6 +748,9 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                                         patience=self.oc.optim.early_stop_patience,
                                         verbose=False,
                                         mode=self.oc.optim.early_stop_mode), ]
+            
+        # ⭐ 在这里追加我们自定义的 epoch 打印回调
+        callbacks += [TrainEpochPrinter(), ValEpochPrinter()]
 
         logger = kwargs.pop("logger", [])
         tb_logger = pl_loggers.TensorBoardLogger(save_dir=self.save_dir)
@@ -671,8 +790,8 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
         ret.update(oc_trainer_kwargs)
         ret.update(kwargs)
         
-        # # 如果上面都没提供，则默认关闭；若配置里显式设置了 True，则仍然可以打开
-        # ret.setdefault("enable_progress_bar", False)
+        # 如果上面都没提供，则默认关闭；若配置里显式设置了 True，则仍然可以打开
+        ret.setdefault("enable_progress_bar", False)
         return ret
 
     @classmethod
@@ -799,6 +918,31 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
             return out_seq, {"y": in_seq}, in_seq
         else:
             return out_seq, {"y": in_seq}
+    
+    def _masked_flat(self, pred_seq: torch.Tensor, target_seq: torch.Tensor):
+        """
+        对 [B, T, H, W, C] 的预测和真值应用几何 mask，只保留圆内像素。
+
+        返回：
+          pred_valid: 1D，有效像素的预测值
+          target_valid: 1D，有效像素的真值
+          mask_full: bool，[B, T, H, W, C]，True 表示有效
+        """
+        # self.valid_mask: [1, 1, H, W, 1]
+        mask = self.valid_mask.to(pred_seq.device)
+
+        # 扩展到当前 batch / 时间长度 / 通道数
+        mask_full = mask.expand(
+            pred_seq.shape[0],    # B
+            pred_seq.shape[1],    # T
+            -1, -1,
+            pred_seq.shape[-1],   # C
+        )  # shape: [B, T, H, W, C]
+
+        pred_valid = pred_seq[mask_full]
+        target_valid = target_seq[mask_full]
+        return pred_valid, target_valid, mask_full
+
 
     def training_step(self, batch, batch_idx):
         loss, loss_dict = self(batch)
@@ -887,9 +1031,23 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     aligned_pred_label_list.append(f"{self.oc.logging.logging_prefix}_aligned_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.valid_aligned_mse(pred_seq, target_seq)
-                    self.valid_aligned_mae(pred_seq, target_seq)
-                    self.valid_aligned_score.update(pred_seq, target_seq)
+                        
+                    #==========1120新增仅在mask范围内计算指标）===========
+                    # self.valid_aligned_mse(pred_seq, target_seq)
+                    # self.valid_aligned_mae(pred_seq, target_seq)
+                    # self.valid_aligned_score.update(pred_seq, target_seq)
+                    pred_valid, target_valid, mask_full = self._masked_flat(pred_seq, target_seq)
+                    if pred_valid.numel() > 0:
+                        self.valid_aligned_mse(pred_valid, target_valid)
+                        self.valid_aligned_mae(pred_valid, target_valid)
+
+                        # SkillScore 需要完整 5 维，把圆外都设为 0（视为“无回波&无回波”）
+                        pred_for_score = pred_seq.clone()
+                        target_for_score = target_seq.clone()
+                        pred_for_score[~mask_full] = 0.0
+                        target_for_score[~mask_full] = 0.0
+                        self.valid_aligned_score.update(pred_for_score, target_for_score)
+
                 # no alignment
                 if self.oc.eval.eval_unaligned:
                     pred_seq = self.sample(
@@ -901,9 +1059,22 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     pred_label_list.append(f"{self.oc.logging.logging_prefix}_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.valid_mse(pred_seq, target_seq)
-                    self.valid_mae(pred_seq, target_seq)
-                    self.valid_score.update(pred_seq, target_seq)
+                        
+                    #==========1120新增仅在mask范围内计算指标）===========
+                    # self.valid_mse(pred_seq, target_seq)
+                    # self.valid_mae(pred_seq, target_seq)
+                    # self.valid_score.update(pred_seq, target_seq)
+                    pred_valid, target_valid, mask_full = self._masked_flat(pred_seq, target_seq)
+                    if pred_valid.numel() > 0:
+                        self.valid_mse(pred_valid, target_valid)
+                        self.valid_mae(pred_valid, target_valid)
+
+                        pred_for_score = pred_seq.clone()
+                        target_for_score = target_seq.clone()
+                        pred_for_score[~mask_full] = 0.0
+                        target_for_score[~mask_full] = 0.0
+                        self.valid_score.update(pred_for_score, target_for_score)
+                    
             pred_seq_list = aligned_pred_seq_list + pred_seq_list
             pred_label_list = aligned_pred_label_list + pred_label_list
             self.save_vis_step_end(
@@ -951,7 +1122,16 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
         if True:
             target_seq, cond, context_seq = \
                 self.get_input(batch, return_verbose=True)
-            target_seq_bchw = rearrange(target_seq, "b t h w c -> (b t) c h w")
+                
+            #=============1120新增仅在mask范围内计算指标================
+            # 基于 target 构造一次 mask，供本 batch 所有 metric 使用
+            _, _, mask_full_target = self._masked_flat(target_seq, target_seq)
+            # [B, T, H, W]，SSIM 要用 (b*t,1,H,W) 的 mask
+            mask_spatial = mask_full_target[..., 0]           # 去掉 C 维
+            mask_bchw = rearrange(mask_spatial, "b t h w -> (b t) 1 h w")
+            
+            # target_seq_bchw = rearrange(target_seq, "b t h w c -> (b t) c h w")
+            
             aligned_pred_seq_list = []
             aligned_pred_label_list = []
             pred_seq_list = []
@@ -979,12 +1159,39 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                     aligned_pred_label_list.append(f"{self.oc.logging.logging_prefix}_aligned_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.test_aligned_mse(pred_seq, target_seq)
-                    self.test_aligned_mae(pred_seq, target_seq)
-                    self.test_aligned_score.update(pred_seq, target_seq)
-                    self.test_aligned_fvd.update(pred_seq, real=False)
-                    pred_seq_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
-                    self.test_aligned_ssim(pred_seq_bchw, target_seq_bchw)
+                        
+                    #==========1120新增仅在mask范围内计算指标）===========
+                    # self.test_aligned_mse(pred_seq, target_seq)
+                    # self.test_aligned_mae(pred_seq, target_seq)
+                    # self.test_aligned_score.update(pred_seq, target_seq)
+                    # self.test_aligned_fvd.update(pred_seq, real=False)
+                    # pred_seq_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
+                    # self.test_aligned_ssim(pred_seq_bchw, target_seq_bchw)
+                    # ======= 1) MSE / MAE：只用圆内像素 =======
+                    pred_valid, target_valid, _ = self._masked_flat(pred_seq, target_seq)
+                    if pred_valid.numel() > 0:
+                        self.test_aligned_mse(pred_valid, target_valid)
+                        self.test_aligned_mae(pred_valid, target_valid)
+
+                        # ======= 2) SkillScore：圆外置 0 =======
+                        pred_for_score = pred_seq.clone()
+                        target_for_score = target_seq.clone()
+                        pred_for_score[~mask_full_target] = 0.0
+                        target_for_score[~mask_full_target] = 0.0
+                        self.test_aligned_score.update(pred_for_score, target_for_score)
+
+                        # ======= 3) FVD：圆外置 0，避免无意义区域影响特征 =======
+                        pred_for_fvd = pred_seq.clone()
+                        pred_for_fvd[~mask_full_target] = 0.0
+                        # self.test_aligned_fvd.update(pred_for_fvd, real=False)
+
+                        # ======= 4) SSIM：转换为 (B*T, C, H, W)，圆外置 0 =======
+                        pred_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
+                        target_bchw = rearrange(target_seq, "b t h w c -> (b t) c h w")
+                        pred_bchw = torch.where(mask_bchw, pred_bchw, torch.zeros_like(pred_bchw))
+                        target_bchw = torch.where(mask_bchw, target_bchw, torch.zeros_like(target_bchw))
+                        self.test_aligned_ssim(pred_bchw, target_bchw)
+                        
                 # no alignment
                 if self.oc.eval.eval_unaligned:
                     pred_seq = self.sample(
@@ -996,20 +1203,59 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
                         npy_path = os.path.join(self.npy_save_dir,
                                                 f"batch{batch_idx}_rank{self.local_rank}_sample{i}.npy")
                         np.save(npy_path, pred_seq.detach().float().cpu().numpy())
-                    pred_seq_list.append(pred_seq[0].detach().float().cpu().numpy())
+                    pred_seq_list.append(pred_seq.detach().float().cpu().numpy())
                     pred_label_list.append(f"{self.oc.logging.logging_prefix}_pred_{i}")
                     if pred_seq.dtype is not torch.float:
                         pred_seq = pred_seq.float()
-                    self.test_mse(pred_seq, target_seq)
-                    self.test_mae(pred_seq, target_seq)
-                    self.test_score.update(pred_seq, target_seq)
-                    self.test_fvd.update(pred_seq, real=False)
-                    pred_seq_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
-                    self.test_ssim(pred_seq_bchw, target_seq_bchw)
+                        
+                    #==========1120新增仅在mask范围内计算指标）===========
+                    # self.test_mse(pred_seq, target_seq)
+                    # self.test_mae(pred_seq, target_seq)
+                    # self.test_score.update(pred_seq, target_seq)
+                    # self.test_fvd.update(pred_seq, real=False)
+                    # pred_seq_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
+                    # self.test_ssim(pred_seq_bchw, target_seq_bchw)
+                     # ======= 1) MSE / MAE：只用圆内像素 =======
+                    pred_valid, target_valid, _ = self._masked_flat(pred_seq, target_seq)
+                    if pred_valid.numel() > 0:
+                        self.test_mse(pred_valid, target_valid)
+                        self.test_mae(pred_valid, target_valid)
+
+                        # ======= 2) SkillScore：圆外置 0 =======
+                        pred_for_score = pred_seq.clone()
+                        target_for_score = target_seq.clone()
+                        pred_for_score[~mask_full_target] = 0.0
+                        target_for_score[~mask_full_target] = 0.0
+                        self.test_score.update(pred_for_score, target_for_score)
+
+                        # ======= 3) FVD：圆外置 0 =======
+                        pred_for_fvd = pred_seq.clone()
+                        pred_for_fvd[~mask_full_target] = 0.0
+                        # self.test_fvd.update(pred_for_fvd, real=False)
+
+                        # ======= 4) SSIM：圆外置 0 =======
+                        pred_bchw = rearrange(pred_seq, "b t h w c -> (b t) c h w")
+                        target_bchw = rearrange(target_seq, "b t h w c -> (b t) c h w")
+                        pred_bchw = torch.where(mask_bchw, pred_bchw, torch.zeros_like(pred_bchw))
+                        target_bchw = torch.where(mask_bchw, target_bchw, torch.zeros_like(target_bchw))
+                        self.test_ssim(pred_bchw, target_bchw)
+            
+            #==============1120更改计算fvd在mask范围内=================            
+            # if self.use_alignment and self.oc.eval.eval_aligned:
+            #     self.test_aligned_fvd.update(target_seq, real=True)
+            # if self.oc.eval.eval_unaligned:
+            #     self.test_fvd.update(target_seq, real=True)
             if self.use_alignment and self.oc.eval.eval_aligned:
-                self.test_aligned_fvd.update(target_seq, real=True)
+                target_for_fvd = target_seq.clone()
+                target_for_fvd[~mask_full_target] = 0.0
+                # self.test_aligned_fvd.update(target_for_fvd, real=True)
             if self.oc.eval.eval_unaligned:
-                self.test_fvd.update(target_seq, real=True)
+                target_for_fvd = target_seq.clone()
+                target_for_fvd[~mask_full_target] = 0.0
+                # self.test_fvd.update(target_for_fvd, real=True)
+
+                
+                
             pred_seq_list = aligned_pred_seq_list + pred_seq_list
             pred_label_list = aligned_pred_label_list + pred_label_list
             # ##只遍历1个
@@ -1163,14 +1409,14 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save', default='1111_allradar_train_finetune_ep100_val10', type=str)
+    parser.add_argument('--save', default='1120_allradar_train_finetune99pt_ep2000_val50', type=str)
     parser.add_argument('--nodes', default=1, type=int,
                         help="Number of nodes in DDP training.")
-    parser.add_argument('--gpus', default=3, type=int,
+    parser.add_argument('--gpus', default=1, type=int,
                         help="Number of GPUS per node in DDP training.")
-    parser.add_argument('--cfg', default='/data/25fall_nowcasting/ly/PreDiff-25fall/ly_code/1111train_allradar_7to6/prediff_sevirlr_v1_finetune.yaml', type=str)
+    parser.add_argument('--cfg', default='/home/user01/personal_file/ly/PreDiff-25fall/ly_code/1120train_allradar_7to6_vis_valonly/prediff_sevirlr_v1_finetune.yaml', type=str)
     parser.add_argument('--test', default=False, action='store_true')
-    parser.add_argument('--ckpt_name', default=None, type=str,
+    parser.add_argument('--ckpt_name', default='099.ckpt', type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
     parser.add_argument('--pretrained', default=False, action='store_true',
                         help='Load pretrained checkpoints for test.')
@@ -1371,8 +1617,9 @@ def main():
         # ====== 新增 fine-tune 初始化 ======
         if args.finetune:
             print("[INFO] Fine-tuning: loading pretrained Earthformer-UNet weights as initialization...")
-            earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,
-                                                    pretrained_sevirlr_earthformerunet_name)
+            # earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,
+            #                                         pretrained_sevirlr_earthformerunet_name)
+            earthformerunet_ckpt_path = '/home/user01/personal_file/ly/PreDiff-25fall/experiments-25fall/1118_allradar_train_finetune_ep100_val10/checkpoints/sevirlr_earthformerunet.pt'
             if not os.path.exists(earthformerunet_ckpt_path):
                 raise FileNotFoundError(f"Pretrained checkpoint not found: {earthformerunet_ckpt_path}")
             pretrained_state = torch.load(earthformerunet_ckpt_path, map_location=torch.device("cpu"))
@@ -1385,39 +1632,39 @@ def main():
             print("[Fine-tune Init] Pretrained weights loaded successfully. Continue training...")
         # ====== end fine-tune ======
 
-        # ====== 原始从零训练逻辑 ======
-        # if args.ckpt_name is not None:
-        #     ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
-        #     if not os.path.exists(ckpt_path):
-        #         warnings.warn(f"ckpt {ckpt_path} not exists! Start training from epoch 0.")
-        #         ckpt_path = None
-        # else:
-        #     ckpt_path = None
-        
+        #====== 原始从零训练逻辑 ======
         if args.ckpt_name is not None:
             ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
             if not os.path.exists(ckpt_path):
                 warnings.warn(f"ckpt {ckpt_path} not exists! Start training from epoch 0.")
                 ckpt_path = None
-            else:
-                # 直接加载，忽略不匹配的key
-                checkpoint = torch.load(ckpt_path, map_location="cpu")
-                
-                # 获取当前模型的state_dict
-                model_state_dict = pl_module.state_dict()
-                
-                # 只加载匹配的key
-                matched_state_dict = {}
-                for key, value in checkpoint["state_dict"].items():
-                    if key in model_state_dict and model_state_dict[key].shape == value.shape:
-                        matched_state_dict[key] = value
-                
-                print(f"匹配的参数: {len(matched_state_dict)}/{len(checkpoint['state_dict'])}")
-                
-                pl_module.load_state_dict(matched_state_dict, strict=False)
-                ckpt_path = None
         else:
             ckpt_path = None
+        
+        # if args.ckpt_name is not None:
+        #     ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
+        #     if not os.path.exists(ckpt_path):
+        #         warnings.warn(f"ckpt {ckpt_path} not exists! Start training from epoch 0.")
+        #         ckpt_path = None
+        #     else:
+        #         # 直接加载，忽略不匹配的key
+        #         checkpoint = torch.load(ckpt_path, map_location="cpu")
+                
+        #         # 获取当前模型的state_dict
+        #         model_state_dict = pl_module.state_dict()
+                
+        #         # 只加载匹配的key
+        #         matched_state_dict = {}
+        #         for key, value in checkpoint["state_dict"].items():
+        #             if key in model_state_dict and model_state_dict[key].shape == value.shape:
+        #                 matched_state_dict[key] = value
+                
+        #         print(f"匹配的参数: {len(matched_state_dict)}/{len(checkpoint['state_dict'])}")
+                
+        #         pl_module.load_state_dict(matched_state_dict, strict=False)
+        #         ckpt_path = None
+        # else:
+        #     ckpt_path = None
             
         # # ==================== 251023 单样本调试模式（不需要的时候直接注释掉即可） ====================
         # from torch.utils.data import DataLoader

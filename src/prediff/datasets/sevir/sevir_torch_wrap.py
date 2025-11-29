@@ -4,6 +4,7 @@ Add data augmentation.
 Only return "VIL" data in `torch.Tensor` format instead of `Dict`
 """
 import os
+import random
 from typing import Union, Dict, Sequence, Tuple, List
 import numpy as np
 import datetime
@@ -303,7 +304,7 @@ class SEVIRLightningDataModule(LightningDataModule):
             npy_files = npy_files[: int(self.npy_num_samples)]
         # 可选：随机打乱后再 split
         if self.random_split:
-            import random
+            # import random
             rnd = random.Random(self.split_seed)
             rnd.shuffle(npy_files)
 
@@ -342,38 +343,103 @@ class SEVIRLightningDataModule(LightningDataModule):
                 if len(all_samples) >= max_samples:
                     break
 
-            # ✅ (2) 按配置文件比例划分 train/val/test
+            # # ✅ (2) 按配置文件比例划分 train/val/test
+            # train_ratio = 0.8
+            # val_ratio = 0.1
+            # test_ratio = 0.1
+            # if hasattr(self, "val_ratio") and self.val_ratio is not None:
+            #     val_ratio = float(self.val_ratio)
+            #     # 自动保持三者和为1
+            #     train_ratio = 1.0 - 2 * val_ratio
+            #     test_ratio = val_ratio
+
+            # n_total = len(all_samples)
+            
+            
+            # # ✅ 特殊情况处理：样本过少时直接复用
+            # if n_total <= 1:
+            #     print(f"[WARN] Only {n_total} sample(s) found — using same file for train/val/test.")
+            #     train_samples = val_samples = test_samples = all_samples
+            # else:
+            #     n_train = int(n_total * train_ratio)
+            #     n_val = int(n_total * val_ratio)
+            #     n_test = n_total - n_train - n_val
+
+            #     # ✅ 确保至少各一条（防止空 split）
+            #     if n_train == 0 and n_total > 0: n_train = 1
+            #     if n_val == 0 and n_total > 1: n_val = 1
+            #     if n_test == 0 and n_total > 2: n_test = 1
+
+            #     train_samples = all_samples[:n_train]
+            #     val_samples = all_samples[n_train:n_train + n_val]
+            #     test_samples = all_samples[n_train + n_val:]
+
+            # print(f"[Split] train={len(train_samples)}, val={len(val_samples)}, test={len(test_samples)}")
+            
+            # === 2. 先固定 test，再对 train+val 随机划分 ===
             train_ratio = 0.8
             val_ratio = 0.1
             test_ratio = 0.1
             if hasattr(self, "val_ratio") and self.val_ratio is not None:
                 val_ratio = float(self.val_ratio)
-                # 自动保持三者和为1
                 train_ratio = 1.0 - 2 * val_ratio
                 test_ratio = val_ratio
 
             n_total = len(all_samples)
-            
-            
-            # ✅ 特殊情况处理：样本过少时直接复用
+
             if n_total <= 1:
                 print(f"[WARN] Only {n_total} sample(s) found — using same file for train/val/test.")
                 train_samples = val_samples = test_samples = all_samples
             else:
+                # 先按比例算出 test 数量（固定最后一段为 test）
+                n_test = int(n_total * test_ratio)
+                if n_test == 0:
+                    n_test = 1  # 至少保留一个样本做 test
+                    
                 n_train = int(n_total * train_ratio)
                 n_val = int(n_total * val_ratio)
                 n_test = n_total - n_train - n_val
 
-                # ✅ 确保至少各一条（防止空 split）
-                if n_train == 0 and n_total > 0: n_train = 1
-                if n_val == 0 and n_total > 1: n_val = 1
-                if n_test == 0 and n_total > 2: n_test = 1
+                n_trainval = n_train + n_val
+                if n_trainval <= 1:
+                    # 样本太少，干脆全部复用
+                    print(f"[WARN] Only {n_total} sample(s) for train+val — using same for all splits.")
+                    train_samples = val_samples = test_samples = all_samples
+                else:
+                    # 按时间顺序：前面是 train+val，最后 n_test 是 test（固定不变）
+                    trainval_samples = all_samples[:n_trainval]
+                    test_samples = all_samples[n_trainval:]
 
-                train_samples = all_samples[:n_train]
-                val_samples = all_samples[n_train:n_train + n_val]
-                test_samples = all_samples[n_train + n_val:]
+                    # 在 train+val 内部用 split_seed 打乱，保证可复现
+                    rnd = random.Random(self.split_seed)
+                    rnd.shuffle(trainval_samples)
+
+                    # train:val 再按原比例拆（在 trainval 内部）
+                    # 注意这里只用 train_ratio 和 val_ratio 的相对占比
+                    tv_sum = train_ratio + val_ratio
+                    if tv_sum <= 0:
+                        # 极端情况，默认 9:1
+                        train_ratio_eff = 0.9
+                        val_ratio_eff = 0.1
+                    else:
+                        train_ratio_eff = train_ratio / tv_sum
+                        val_ratio_eff = val_ratio / tv_sum
+
+                    n_train = int(n_trainval * train_ratio_eff)
+                    n_val = n_trainval - n_train
+
+                    if n_train == 0 and n_trainval > 0:
+                        n_train = 1
+                        n_val = n_trainval - 1
+                    if n_val == 0 and n_trainval > 1:
+                        n_val = 1
+                        n_train = n_trainval - 1
+
+                    train_samples = trainval_samples[:n_train]
+                    val_samples = trainval_samples[n_train:]
 
             print(f"[Split] train={len(train_samples)}, val={len(val_samples)}, test={len(test_samples)}")
+
 
             # ✅ (3) 导出CSV记录
             split_records = []
