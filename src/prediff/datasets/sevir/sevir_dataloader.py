@@ -36,7 +36,7 @@ PREPROCESS_SCALE_01 = {'vis': 1,
                        'ir069': 1,
                        'ir107': 1,
                        #'vil': 1 / 255,  # currently the only one implemented
-                       'vil': 1 / 180,
+                       'vil': 1 / 255,
                        'lght': 1}
 PREPROCESS_OFFSET_01 = {'vis': 0,
                         'ir069': 0,

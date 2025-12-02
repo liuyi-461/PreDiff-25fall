@@ -1,0 +1,694 @@
+/opt/miniconda3/envs/user01/prediff-cyr/lib/python3.10/site-packages/lightning/fabric/__init__.py:36: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  __import__("pkg_resources").declare_namespace(__name__)
+Global seed set to 0
+Global seed set to 0
+/opt/miniconda3/envs/user01/prediff-cyr/lib/python3.10/site-packages/torch/functional.py:534: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3595.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+/home/user01/personal_file/cyr/PreDiff-25fall/scripts/prediff/sevirlr/train_sevirlr_prediff.py:156: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  state_dict = torch.load(os.path.join(default_pretrained_vae_dir, vae_cfg["pretrained_ckpt_path"]),
+/home/user01/personal_file/cyr/PreDiff-25fall/src/prediff/diffusion/knowledge_alignment/sevir.py:38: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  self.model.load_state_dict(torch.load(model_ckpt_path, map_location="cpu"))
+/home/user01/personal_file/cyr/PreDiff-25fall/src/prediff/evaluation/fvd/download.py:70: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  i3d.load_state_dict(torch.load(filepath, map_location=device))
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+[rank: 0] Global seed set to 0
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/1
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 1 processes
+----------------------------------------------------------------------------------------------------
+
+[rank: 0] Global seed set to 0
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1,2,3]
+[RUNTIME] __file__ = /home/user01/personal_file/cyr/PreDiff-25fall/scripts/prediff/sevirlr/train_sevirlr_prediff.py
+[RUNTIME] cwd = /home/user01/personal_file/cyr/PreDiff-25fall/scripts/prediff/sevirlr
+[RUNTIME] sys.argv[0] = train_sevirlr_prediff.py
+[Config] dataset_cfg['sevir_dir'] = /home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len19_mask64_test/
+[SEVIRNPYDataset] root_dir received: /home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len19_mask64_test
+[NPY] input_len=7, pred_len=12, seq_len=19
+[SEVIRNPYDataset] root_dir received: /home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len19_mask64_test
+[NPY] input_len=7, pred_len=12, seq_len=19
+PreDiffSEVIRPLModule: Running in eps-prediction mode
+Keeping EMAs of 642.
+[SEVIRNPYDataset] root_dir received: /home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len19_mask64_test
+[NPY] input_len=7, pred_len=12, seq_len=19
+Testing: 0it [00:00, ?it/s]Testing:   0%|          | 0/206 [00:00<?, ?it/s]Testing DataLoader 0:   0%|          | 0/206 [00:00<?, ?it/s]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   0%|          | 1/206 [04:42<16:05:59, 282.73s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   1%|          | 2/206 [09:31<16:10:42, 285.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   1%|▏         | 3/206 [14:18<16:08:12, 286.17s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   2%|▏         | 4/206 [19:06<16:04:58, 286.63s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   2%|▏         | 5/206 [23:53<16:00:45, 286.79s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   3%|▎         | 6/206 [28:41<15:56:33, 286.97s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   3%|▎         | 7/206 [33:29<15:52:01, 287.04s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   4%|▍         | 8/206 [38:17<15:47:33, 287.14s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   4%|▍         | 9/206 [43:04<15:42:44, 287.13s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   5%|▍         | 10/206 [47:52<15:38:17, 287.23s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   5%|▌         | 11/206 [52:40<15:33:39, 287.28s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   6%|▌         | 12/206 [57:28<15:29:03, 287.34s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   6%|▋         | 13/206 [1:02:15<15:24:18, 287.35s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   7%|▋         | 14/206 [1:07:03<15:19:37, 287.38s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   7%|▋         | 15/206 [1:11:50<15:14:46, 287.37s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   8%|▊         | 16/206 [1:16:38<15:10:08, 287.41s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   8%|▊         | 17/206 [1:21:26<15:05:25, 287.44s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   9%|▊         | 18/206 [1:26:14<15:00:47, 287.49s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:   9%|▉         | 19/206 [1:31:02<14:56:03, 287.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  10%|▉         | 20/206 [1:35:50<14:51:21, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  10%|█         | 21/206 [1:40:38<14:46:34, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  11%|█         | 22/206 [1:45:26<14:41:49, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  11%|█         | 23/206 [1:50:13<14:36:59, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  12%|█▏        | 24/206 [1:55:00<14:32:11, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  12%|█▏        | 25/206 [1:59:48<14:27:23, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  13%|█▎        | 26/206 [2:04:35<14:22:36, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  13%|█▎        | 27/206 [2:09:24<14:17:54, 287.57s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  14%|█▎        | 28/206 [2:14:11<14:13:06, 287.57s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  14%|█▍        | 29/206 [2:18:59<14:08:21, 287.58s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  15%|█▍        | 30/206 [2:23:46<14:03:31, 287.57s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  15%|█▌        | 31/206 [2:28:34<13:58:45, 287.57s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  16%|█▌        | 32/206 [2:33:22<13:53:59, 287.58s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  16%|█▌        | 33/206 [2:38:10<13:49:14, 287.60s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  17%|█▋        | 34/206 [2:42:58<13:44:26, 287.60s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  17%|█▋        | 35/206 [2:47:46<13:39:41, 287.61s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  17%|█▋        | 36/206 [2:52:31<13:34:44, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  18%|█▊        | 37/206 [2:57:15<13:29:39, 287.46s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  18%|█▊        | 38/206 [3:02:03<13:24:53, 287.46s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  19%|█▉        | 39/206 [3:06:50<13:20:05, 287.46s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  19%|█▉        | 40/206 [3:11:39<13:15:22, 287.48s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  20%|█▉        | 41/206 [3:16:26<13:10:34, 287.48s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  20%|██        | 42/206 [3:21:14<13:05:49, 287.49s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  21%|██        | 43/206 [3:26:01<13:00:59, 287.48s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  21%|██▏       | 44/206 [3:30:49<12:56:13, 287.49s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  22%|██▏       | 45/206 [3:35:36<12:51:24, 287.48s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  22%|██▏       | 46/206 [3:40:24<12:46:38, 287.49s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  23%|██▎       | 47/206 [3:45:12<12:41:51, 287.49s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  23%|██▎       | 48/206 [3:50:00<12:37:05, 287.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  24%|██▍       | 49/206 [3:54:47<12:32:18, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  24%|██▍       | 50/206 [3:59:35<12:27:32, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  25%|██▍       | 51/206 [4:04:23<12:22:44, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  25%|██▌       | 52/206 [4:09:10<12:17:57, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  26%|██▌       | 53/206 [4:13:57<12:13:08, 287.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  26%|██▌       | 54/206 [4:18:45<12:08:20, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  27%|██▋       | 55/206 [4:23:32<12:03:33, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  27%|██▋       | 56/206 [4:28:20<11:58:46, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  28%|██▊       | 57/206 [4:33:07<11:53:57, 287.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  28%|██▊       | 58/206 [4:37:55<11:49:10, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  29%|██▊       | 59/206 [4:42:42<11:44:22, 287.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  29%|██▉       | 60/206 [4:47:30<11:39:36, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  30%|██▉       | 61/206 [4:52:17<11:34:48, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  30%|███       | 62/206 [4:57:05<11:30:01, 287.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  31%|███       | 63/206 [5:01:53<11:25:14, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  31%|███       | 64/206 [5:06:41<11:20:27, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  32%|███▏      | 65/206 [5:11:29<11:15:40, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  32%|███▏      | 66/206 [5:16:16<11:10:53, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  33%|███▎      | 67/206 [5:21:04<11:06:06, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  33%|███▎      | 68/206 [5:25:51<11:01:18, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  33%|███▎      | 69/206 [5:30:39<10:56:31, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  34%|███▍      | 70/206 [5:35:27<10:51:44, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  34%|███▍      | 71/206 [5:40:15<10:46:57, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  35%|███▍      | 72/206 [5:45:01<10:42:08, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  35%|███▌      | 73/206 [5:49:49<10:37:20, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  36%|███▌      | 74/206 [5:54:36<10:32:32, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  36%|███▋      | 75/206 [5:59:24<10:27:45, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  37%|███▋      | 76/206 [6:04:11<10:22:57, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  37%|███▋      | 77/206 [6:08:59<10:18:10, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  38%|███▊      | 78/206 [6:13:46<10:13:23, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  38%|███▊      | 79/206 [6:18:35<10:08:36, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  39%|███▉      | 80/206 [6:23:22<10:03:49, 287.53s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  39%|███▉      | 81/206 [6:28:10<9:59:01, 287.54s/it] has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  40%|███▉      | 82/206 [6:32:58<9:54:14, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  40%|████      | 83/206 [6:37:45<9:49:27, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  41%|████      | 84/206 [6:42:33<9:44:39, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  41%|████▏     | 85/206 [6:47:20<9:39:52, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  42%|████▏     | 86/206 [6:52:08<9:35:04, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  42%|████▏     | 87/206 [6:56:56<9:30:17, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  43%|████▎     | 88/206 [7:01:43<9:25:29, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  43%|████▎     | 89/206 [7:06:31<9:20:42, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  44%|████▎     | 90/206 [7:11:18<9:15:54, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  44%|████▍     | 91/206 [7:16:06<9:11:07, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  45%|████▍     | 92/206 [7:20:53<9:06:19, 287.54s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  45%|████▌     | 93/206 [7:25:41<9:01:32, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  46%|████▌     | 94/206 [7:30:29<8:56:45, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  46%|████▌     | 95/206 [7:35:17<8:51:58, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  47%|████▋     | 96/206 [7:40:04<8:47:10, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  47%|████▋     | 97/206 [7:44:52<8:42:23, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  48%|████▊     | 98/206 [7:49:40<8:37:35, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  48%|████▊     | 99/206 [7:54:27<8:32:48, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  49%|████▊     | 100/206 [7:59:15<8:28:00, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  49%|████▉     | 101/206 [8:04:02<8:23:12, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  50%|████▉     | 102/206 [8:08:49<8:18:24, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  50%|█████     | 103/206 [8:13:37<8:13:37, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  50%|█████     | 104/206 [8:18:24<8:08:49, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  51%|█████     | 105/206 [8:23:12<8:04:02, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  51%|█████▏    | 106/206 [8:28:00<7:59:14, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  52%|█████▏    | 107/206 [8:32:48<7:54:27, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  52%|█████▏    | 108/206 [8:37:35<7:49:40, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  53%|█████▎    | 109/206 [8:42:23<7:44:52, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  53%|█████▎    | 110/206 [8:47:10<7:40:04, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  54%|█████▍    | 111/206 [8:51:58<7:35:17, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  54%|█████▍    | 112/206 [8:56:46<7:30:30, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  55%|█████▍    | 113/206 [9:01:34<7:25:42, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  55%|█████▌    | 114/206 [9:06:21<7:20:55, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  56%|█████▌    | 115/206 [9:11:09<7:16:07, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  56%|█████▋    | 116/206 [9:15:56<7:11:20, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  57%|█████▋    | 117/206 [9:20:43<7:06:32, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  57%|█████▋    | 118/206 [9:25:31<7:01:44, 287.56s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  58%|█████▊    | 119/206 [9:30:18<6:56:57, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  58%|█████▊    | 120/206 [9:35:06<6:52:09, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  59%|█████▊    | 121/206 [9:39:53<6:47:21, 287.55s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  59%|█████▉    | 122/206 [9:44:37<6:42:31, 287.52s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  60%|█████▉    | 123/206 [9:48:59<6:37:27, 287.32s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  60%|██████    | 124/206 [9:53:29<6:32:28, 287.17s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  61%|██████    | 125/206 [9:57:58<6:27:29, 287.03s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  61%|██████    | 126/206 [10:02:28<6:22:31, 286.89s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  62%|██████▏   | 127/206 [10:06:57<6:17:33, 286.75s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  62%|██████▏   | 128/206 [10:11:28<6:12:36, 286.63s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  63%|██████▎   | 129/206 [10:15:57<6:07:40, 286.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  63%|██████▎   | 130/206 [10:20:27<6:02:43, 286.36s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  64%|██████▎   | 131/206 [10:24:56<5:57:47, 286.23s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  64%|██████▍   | 132/206 [10:29:25<5:52:51, 286.11s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  65%|██████▍   | 133/206 [10:33:56<5:47:56, 285.99s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  65%|██████▌   | 134/206 [10:38:25<5:43:02, 285.86s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  66%|██████▌   | 135/206 [10:42:55<5:38:07, 285.74s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  66%|██████▌   | 136/206 [10:47:24<5:33:13, 285.62s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  67%|██████▋   | 137/206 [10:51:53<5:28:19, 285.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  67%|██████▋   | 138/206 [10:56:23<5:23:26, 285.39s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  67%|██████▋   | 139/206 [11:00:53<5:18:33, 285.27s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  68%|██████▊   | 140/206 [11:05:22<5:13:40, 285.16s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  68%|██████▊   | 141/206 [11:09:52<5:08:48, 285.05s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  69%|██████▉   | 142/206 [11:14:18<5:03:54, 284.92s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  69%|██████▉   | 143/206 [11:18:47<4:59:03, 284.81s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  70%|██████▉   | 144/206 [11:23:17<4:54:11, 284.70s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  70%|███████   | 145/206 [11:27:47<4:49:20, 284.60s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  71%|███████   | 146/206 [11:32:17<4:44:30, 284.50s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  71%|███████▏  | 147/206 [11:36:46<4:39:39, 284.40s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  72%|███████▏  | 148/206 [11:41:15<4:34:49, 284.30s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  72%|███████▏  | 149/206 [11:45:44<4:29:58, 284.19s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  73%|███████▎  | 150/206 [11:50:13<4:25:09, 284.09s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  73%|███████▎  | 151/206 [11:54:39<4:20:18, 283.97s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  74%|███████▍  | 152/206 [11:59:05<4:15:28, 283.85s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  74%|███████▍  | 153/206 [12:03:31<4:10:37, 283.74s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  75%|███████▍  | 154/206 [12:07:57<4:05:48, 283.62s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  75%|███████▌  | 155/206 [12:12:23<4:00:58, 283.51s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  76%|███████▌  | 156/206 [12:16:48<3:56:09, 283.39s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  76%|███████▌  | 157/206 [12:21:15<3:51:20, 283.28s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  77%|███████▋  | 158/206 [12:25:41<3:46:32, 283.17s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  77%|███████▋  | 159/206 [12:30:08<3:41:44, 283.07s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  78%|███████▊  | 160/206 [12:34:34<3:36:56, 282.97s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  78%|███████▊  | 161/206 [12:39:01<3:32:09, 282.87s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  79%|███████▊  | 162/206 [12:43:27<3:27:21, 282.76s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  79%|███████▉  | 163/206 [12:47:55<3:22:34, 282.67s/it]has rolling_predict: True
+[get_input] out_slice = [slice(None, None, None), slice(7, 19, None), slice(None, None, None), slice(None, None, None), slice(None, None, None)]
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Predicted seq shape: torch.Size([2, 12, 128, 128, 1])
+Testing DataLoader 0:  80%|███████▉  | 164/206 [12:52:22<3:17:48, 282.57s/it]

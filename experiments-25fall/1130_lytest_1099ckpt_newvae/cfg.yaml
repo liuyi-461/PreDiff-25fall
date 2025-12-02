@@ -1,8 +1,8 @@
 dataset:
   # dataset_name: "sevirlr"
   dataset_name: "sevirlr_npy"
+  # sevir_dir: /home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy_2019_len19/
   sevir_dir: /home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len19_mask64_test/
-  img_height: 128
   img_width: 128
   in_len: 7
   #修改
@@ -209,7 +209,7 @@ model:
     time_embed_dropout: 0.0
     unet_res_connect: true
   vae:
-    pretrained_ckpt_path: "pretrained_sevirlr_vae_8x8x64_v1.pt"
+    pretrained_ckpt_path: "sevirlr_vae_1.pt"
     data_channels: 1
     down_block_types: ['DownEncoderBlock2D', 'DownEncoderBlock2D', 'DownEncoderBlock2D', 'DownEncoderBlock2D']
     in_channels: 1

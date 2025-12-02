@@ -1,111 +1,101 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-一键对比 Prediff 有无 KA 的预测结果
-与 SEVIR-LR 真实值 (后 6 帧) 算 MSE/RMSE/Corr/TS
-用法：python compare_ka.py
-"""
-
 import numpy as np
 import glob, os
-from skimage.transform import resize
-
+from skimage.metrics import structural_similarity as ssim
 
 # ========= 1. 路径 =========
-pred_dir = '/data/25fall_nowcasting/cyr/PreDiff-25fall/experiments-25fall/1111_train/npy'
-gt_dir   = '/data/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/radar_npy_len13_530test'
-
+pred_dir = '/home/user01/personal_file/cyr/PreDiff-25fall/experiments-25fall/1127_train_1099ckpt/npy_sevir'
+gt_dir   = '/home/user01/25fall_nowcasting/25fall_aiclass/lesson_resource/data/prediff/datasets/sevirlr/data_npy_2019_len19'
 
 # ========= 2. 文件列表 =========
-# 无KA：batch*_rank0_sample0.npy
-# 有KA：batch*_rank0_sample0_aligned.npy
 pred_no_files = sorted(glob.glob(f'{pred_dir}/batch*_rank0_sample0.npy'))
 pred_ka_files = [f.replace('.npy', '_aligned.npy') for f in pred_no_files]
-# 真实值：与预测文件数量一致，按字典序一一对应
-gt_files = sorted(glob.glob(f'{gt_dir}/*.npy'))[:len(pred_no_files)]
-
+gt_files      = sorted(glob.glob(f'{gt_dir}/*.npy'))[:len(pred_no_files)]
 
 # ========= 3. 工具函数 =========
-def calc_csi(pred, gt, threshold=30.0, scale=180.0):
-    """
-    业务版 CSI
-    pred, gt : 任意 shape 的 ndarray，值域 0-1（归一化）
-    threshold:  dBZ 阈值，默认 30
-    scale    :  归一化时用的最大值，默认 180（即 0-1 对应 0-180 dBZ）
-    """
-    pred_dBZ = pred * scale          # 回到物理单位
-    gt_dBZ   = gt
-
-    p = pred_dBZ >= threshold
-    g = gt_dBZ   >= threshold
-
+def csi_sevir(pred, gt, thr):
+    """pred,gt 都是亮度 0-255"""
+    p = pred >= thr
+    g = gt   >= thr
     hit  = (p & g).sum()
     miss = (~p & g).sum()
     fa   = (p & ~g).sum()
-
     return hit / (hit + miss + fa + 1e-8)
 
-# ========= 4. 事件-样本级对齐（按第二段逻辑） =========
-gt_files = sorted(os.listdir(gt_dir))      # 530 个 .npy，按事件名排序
-n_event  = len(gt_files)
-metrics = {'KA':   {'mse': [], 'rmse': [], 'corr': [], 'ts': [], 'csi30': []},
-           'noKA': {'mse': [], 'rmse': [], 'corr': [], 'ts': [], 'csi30': []}}
+def ssim0(p, g):
+    return ssim(p, g, data_range=1.0)
 
+# ========= 4. SEVIR 官方亮度阈值 =========
+sevir_thr = [16, 74, 133, 160, 181, 219]   # 对应 0.1/1/2.5/10/30/100 mm/h
+lead_idx  = [0, 2, 5, 8, 11]               # 10 30 60 90 120 min
+time_lab  = ['10min', '30min', '1h', '1h30min', '2h']
+
+metrics   = {'noKA': {t: {'MAE': [], 'RMSE': [], 'SSIM': [],
+                          **{f'CSI{thr}': [] for thr in sevir_thr}} for t in lead_idx},
+             'KA':   {t: {'MAE': [], 'RMSE': [], 'SSIM': [],
+                          **{f'CSI{thr}': [] for thr in sevir_thr}} for t in lead_idx}}
+
+# ========= 5. 主循环 =========
 for batch_idx in range(len(gt_files) // 2):
     for sample_idx in range(2):
         gt_index = batch_idx * 2 + sample_idx
-        #if batch_idx  >= 40:
-            #break
         if gt_index >= len(gt_files):
             continue
-        # ---- 4.1 读 GT：固定 7:13 帧，转 (6,128,128) ----
-        gt_path = os.path.join(gt_dir, gt_files[gt_index])
-        gt = np.load(gt_path)                 # (H,W,13) 或 (128,128,13)
-        if gt.ndim == 3 and gt.shape[-1] == 13:
-            gt = gt[..., 7:13]                # (H,W,6)
-        gt = np.transpose(gt, (2, 0, 1))      # (6,H,W)
 
-        # ---- 4.2 读 pred ----
+        # ---- 5.1 读 GT：19帧 → 取后12帧（预报） ----------
+        gt_path = os.path.join(gt_dir, gt_files[gt_index])
+        gt = np.load(gt_path)                 # (H,W,19) or (19,H,W)
+        if gt.ndim == 3 and gt.shape[-1] == 19:
+            gt = gt[..., 7:19]                # (H,W,12)
+        gt = np.transpose(gt, (2, 0, 1))      # (12,H,W)
+
+        # ---- 5.2 读 pred ----------
         base = f'batch{batch_idx}_rank0_sample{sample_idx}'
         pred_no_path = os.path.join(pred_dir, f'{base}.npy')
         pred_ka_path = os.path.join(pred_dir, f'{base}_aligned.npy')
         if not (os.path.exists(pred_no_path) and os.path.exists(pred_ka_path)):
             continue
 
-        pred_no = np.load(pred_no_path)   # 无KA
-        pred_ka = np.load(pred_ka_path)   # 有KA
+        pred_no = np.load(pred_no_path)
+        pred_ka = np.load(pred_ka_path)
+        if pred_no.ndim == 5:
+            pred_no, pred_ka = pred_no[0], pred_ka[0]
+        if pred_no.shape[-1] == 1:
+            pred_no, pred_ka = pred_no[..., 0], pred_ka[..., 0]
+        assert pred_no.shape == gt.shape, f'shape {pred_no.shape} vs {gt.shape}'
 
-        # ---- 4.3 去样本/通道维度 ----
-        if pred_no.ndim == 5:                       # (N,T,H,W,C) 或 (N,T,H,W)
-            pred_no = pred_no[0]
-            pred_ka = pred_ka[0]
-        if pred_no.shape[-1] == 1:                  # (T,H,W,1) → (T,H,W)
-            pred_no = pred_no[..., 0]
-            pred_ka = pred_ka[..., 0]
+        # ---- 5.3 逐时刻算指标（只算圈内，mask=255 排除） ----------
+        for t in lead_idx:
+            g  = gt[t]                # 亮度 0-255
+            pn = pred_no[t]
+            pk = pred_ka[t]
 
-        # ---- 4.4 此时 pred 应该是 (6,128,128)，GT 也是 (6,128,128) ----
-        assert pred_no.shape == gt.shape, f'shape mismatch {pred_no.shape} vs {gt.shape}'
+            mask = g < 255            # 圈内有效像素
+            if mask.sum() == 0:
+                continue
+            g_m   = g[mask]
+            pn_m  = pn[mask]
+            pk_m  = pk[mask]
 
-        # ---- 4.5 拉平 & 算指标 ----
-        pred_flat_no = pred_no.ravel()
-        pred_flat_ka = pred_ka.ravel()
-        gt_flat      = gt.ravel()
+            for tag, pred_m in [('noKA', pn_m), ('KA', pk_m)]:
+                pred_m255 = pred_m * 255.          # 0-1 → 亮度
+                mae  = float(np.mean(np.abs(pred_m - g_m/255.)))
+                rmse = float(np.sqrt(np.mean((pred_m - g_m/255.)**2)))
+                ssim_val = float(ssim0(pred_m, g_m/255.))
 
-        for tag, pred_flat in [('noKA', pred_flat_no), ('KA', pred_flat_ka)]:
-            mse  = np.mean((pred_flat - gt_flat/180.) ** 2)
-            rmse = np.sqrt(mse)
-            corr = np.corrcoef(pred_flat, gt_flat/180.)[0, 1]
-            csi30 = calc_csi(pred_flat, gt_flat, threshold=30.0, scale=180.0)
+                # 官方多阈值 CSI（亮度空间）
+                for thr in sevir_thr:
+                    csi = float(csi_sevir(pred_m255, g_m, thr))
+                    metrics[tag][t][f'CSI{thr}'].append(csi)
 
-            metrics[tag]['mse'].append(mse)
-            metrics[tag]['rmse'].append(rmse)
-            metrics[tag]['corr'].append(corr)
-            metrics[tag]['csi30'].append(csi30)
+                metrics[tag][t]['MAE'].append(mae)
+                metrics[tag][t]['RMSE'].append(rmse)
+                metrics[tag][t]['SSIM'].append(ssim_val)
 
-# ========= 5. 输出对比 =========
+# ========= 6. 输出 ----------
 for tag in ['noKA', 'KA']:
     print(f'----- {tag} -----')
-    print(f'MSE  : {np.mean(metrics[tag]["mse"]):.6f}')
-    print(f'RMSE : {np.mean(metrics[tag]["rmse"]):.6f}')
-    print(f'Corr : {np.mean(metrics[tag]["corr"]):.6f}')
-    print(f'CSI30: {np.mean(metrics[tag]["csi30"]):.6f}')
+    for i, t in enumerate(lead_idx):
+        m = metrics[tag][t]
+        csi_str = '  '.join([f'CSI{thr}={np.mean(m[f"CSI{thr}"]):.4f}' for thr in sevir_thr])
+        print(f'{time_lab[i]:>6} | MAE={np.mean(m["MAE"]):.4f}  '
+              f'RMSE={np.mean(m["RMSE"]):.4f}  SSIM={np.mean(m["SSIM"]):.4f}  {csi_str}')

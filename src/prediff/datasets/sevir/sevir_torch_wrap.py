@@ -169,11 +169,12 @@ class SEVIRNPYDataset(TorchDataset):
     """
     aug_layout = "THW"
 
+#修改
     def __init__(self,
                  root_dir: str,
-                 seq_len: int = 13,
+                 seq_len: int = 19,
                  input_len: int = 7,
-                 pred_len: int = 6,
+                 pred_len: int = 12,
                  stride: int = 6,
                  layout: str = "THWC",
                  preprocess: bool = True,
@@ -181,6 +182,8 @@ class SEVIRNPYDataset(TorchDataset):
                  aug_mode: str = "0",
                  ret_contiguous: bool = True):
         super().__init__()
+        #修改
+        print("[SEVIRNPYDataset] root_dir received:", os.path.abspath(root_dir))
         assert os.path.isdir(root_dir), f"NPY root_dir not found: {root_dir}"
         self.root_dir = os.path.abspath(root_dir)
         self.seq_len = int(seq_len)
@@ -192,6 +195,9 @@ class SEVIRNPYDataset(TorchDataset):
         self.rescale_method = rescale_method
         self.ret_contiguous = ret_contiguous
 
+        #修改
+        print("[NPY] input_len={}, pred_len={}, seq_len={}".format(self.input_len, self.pred_len, self.seq_len))
+        
         # 列出所有 *.npy
         self.files: List[str] = sorted(glob.glob(os.path.join(self.root_dir, "*.npy")))
         if len(self.files) == 0:
@@ -236,7 +242,7 @@ class SEVIRNPYDataset(TorchDataset):
     def _preprocess_01(self, x: torch.Tensor):
         # x: THW (float)
         # 原版 '01' 是 VIL / 255
-        return x / 180.0
+        return x / 255.0
 
     # def __getitem__(self, idx: int):
     #     fi, s = self.index[idx]
@@ -277,7 +283,7 @@ class SEVIRNPYDataset(TorchDataset):
         # Normalize
         if clip.max() > 1.0:
             #clip = clip / 255.0
-            clip = clip / 180.0
+            clip = clip / 255.0
 
         # (T, H, W, 1)
         clip = clip.transpose(2, 0, 1)[..., None]
@@ -298,6 +304,7 @@ class SEVIRNPYDataset(TorchDataset):
 
 class SEVIRLightningDataModule(LightningDataModule):
 
+#修改
     def __init__(self,
                  seq_len: int = 25,
                  sample_mode: str = "sequent",
@@ -321,7 +328,7 @@ class SEVIRLightningDataModule(LightningDataModule):
                  seed: int = 0,
                  # NPY only
                  npy_input_len: int = 7,
-                 npy_pred_len: int = 6,
+                 npy_pred_len: int = 12,
                  npy_stride: int = 6,
                  ):
         super(SEVIRLightningDataModule, self).__init__()

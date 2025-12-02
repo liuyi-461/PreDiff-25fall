@@ -1268,13 +1268,13 @@ class PreDiffSEVIRPLModule(LatentDiffusion):
 def get_parser():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--save', default='tmp_sevirlr', type=str)
-    parser.add_argument('--save', default='1127_train_1099ckpt', type=str)
+    parser.add_argument('--save', default='1201_lytest_newvae_newunet_preka', type=str)
     parser.add_argument('--nodes', default=1, type=int,
                         help="Number of nodes in DDP training.")
-    parser.add_argument('--gpus', default=1, type=int,
+    parser.add_argument('--gpus', default=4, type=int,
                         help="Number of GPUS per node in DDP training.")
     #修改
-    parser.add_argument('--cfg', default='/home/user01/personal_file/cyr/PreDiff-25fall/scripts/prediff/sevirlr/prediff_sevirlr_v1.yaml', type=str)
+    parser.add_argument('--cfg', default='/home/user01/personal_file/cyr/PreDiff-25fall/scripts/prediff/sevirlr/ly/prediff_sevirlr_v1.yaml', type=str)
     # parser.add_argument('--test', action='store_true')
     # parser.add_argument('--ckpt_name', default=None, type=str,
     #                     help='The model checkpoint trained on SEVIR-LR.')
@@ -1283,10 +1283,10 @@ def get_parser():
     # parser.add_argument("--finetune", default=False, action="store_true",
     #                     help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
 
-    parser.add_argument('--test', default=True, action='store_true')
+    parser.add_argument('--test', default=False, action='store_true')
     parser.add_argument('--ckpt_name', default='1099.ckpt', type=str,
                         help='The model checkpoint trained on SEVIR-LR.')
-    parser.add_argument('--pretrained', default=False,action='store_true',
+    parser.add_argument('--pretrained', default=True,action='store_true',
                         help='Load pretrained checkpoints for test.')
     parser.add_argument("--finetune", default=True, action="store_true",
                         help="Load pretrained Earthformer-UNet weights as initialization and continue training.")
@@ -1367,8 +1367,9 @@ def main():
     # =======运行逻辑 1.pretrained=True则加载预训练模型进行测试 2.test=True则加载指定模型进行测试 3.否则进行训练========
     if args.pretrained:
         # load Earthformer-UNet
-        earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,
-                                                 pretrained_sevirlr_earthformerunet_name)
+        # earthformerunet_ckpt_path = os.path.join(default_pretrained_earthformerunet_dir,
+        #                                          pretrained_sevirlr_earthformerunet_name)
+        earthformerunet_ckpt_path = '/home/user01/personal_file/ly/PreDiff-25fall/experiments-25fall/1201_allradar_train_finetune_ep150_val10/checkpoints/sevirlr_earthformerunet.pt'
         state_dict = torch.load(earthformerunet_ckpt_path,
                                 map_location=torch.device("cpu"))
         pl_module.torch_nn_module.load_state_dict(state_dict=state_dict)
@@ -1376,7 +1377,8 @@ def main():
                      datamodule=dm)
     elif args.test:
         if args.ckpt_name is not None:
-            ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
+            # ckpt_path = os.path.join(pl_module.save_dir, "checkpoints", args.ckpt_name)
+            ckpt_path ='/home/user01/personal_file/cyr/PreDiff-25fall/experiments-25fall/1127_train_1099ckpt/checkpoints/1099.ckpt'
             pl_ckpt = pl_load(path_or_url=ckpt_path,
                               map_location=torch.device("cpu"))
             # pl_state_dict = pl_ckpt["state_dict"]  # pl 1.x

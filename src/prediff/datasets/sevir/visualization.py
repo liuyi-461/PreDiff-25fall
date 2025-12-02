@@ -52,7 +52,7 @@ def vis_sevir_seq(
         label_offset=(-0.06, 0.4),
         label_avg_int=False,
         fs=10,
-        max_cols=10, ):
+        max_cols=12, ):
     """
     Parameters
     ----------
